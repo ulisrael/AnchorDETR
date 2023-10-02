@@ -311,9 +311,9 @@ def main(args):
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             sampler_train.set_epoch(epoch)
-        # train_stats = train_one_epoch(
-        #     model, criterion, data_loader_train, optimizer, device, epoch, args.clip_max_norm
-        # )
+        train_stats = train_one_epoch(
+            model, criterion, data_loader_train, optimizer, device, epoch, args.clip_max_norm
+        )
         lr_scheduler.step()
         if args.output_dir:
             checkpoint_paths = [output_dir / 'checkpoint.pth']
@@ -329,9 +329,9 @@ def main(args):
                 }, checkpoint_path)
 
         if (epoch + 1) % args.eval_checkpoint_period == 0:  # per args.eval_checkpoint_period epoch log
-            # test_stats, coco_evaluator = evaluate(
-            #     model, criterion, postprocessors, data_loader_val, base_ds, device, args.output_dir
-            # )
+            test_stats, coco_evaluator = evaluate(
+                model, criterion, postprocessors, data_loader_val, base_ds, device, args.output_dir
+            )
 
             # Get sample validation data
             sample_in, sample_tgts = next(iter(data_loader_val))
