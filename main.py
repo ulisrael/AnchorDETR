@@ -152,8 +152,8 @@ def main(args):
             raise ValueError("The dilation should be True or False")
     print(args)
 
-    # device = torch.device(f'{args.device}:{args.device_num}')
-    device = torch.device('cpu')
+    device = torch.device(f'{args.device}:{args.device_num}')
+    # device = torch.device('cpu')
 
     # fix the seed for reproducibility
     seed = args.seed + utils.get_rank()
@@ -198,6 +198,8 @@ def main(args):
                                  drop_last=False, collate_fn=utils.collate_fn, num_workers=args.num_workers,
                                  pin_memory=True)
 
+    # data_loader_val = data_loader_train
+
     def match_name_keywords(n, name_keywords):
         out = False
         for b in name_keywords:
@@ -228,6 +230,7 @@ def main(args):
             "lr": args.lr * args.lr_linear_proj_mult,
         }
     ]
+
     if args.sgd:
         optimizer = torch.optim.SGD(param_dicts, lr=args.lr, momentum=0.9,
                                     weight_decay=args.weight_decay)
@@ -366,7 +369,7 @@ def main(args):
                 model.to(device)
                 model.eval()
                 sample_out = model(sample_in.to(device))
-                orig_target_sizes = torch.stack([t["orig_size"] for t in sample_tgts], dim=0)
+                orig_target_sizes = torch.stack([t["size"] for t in sample_tgts], dim=0)
                 results = postprocessors['bbox'](sample_out, orig_target_sizes.to(device))
 
             ## Draw boxes and processed image

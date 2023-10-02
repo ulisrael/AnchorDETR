@@ -134,14 +134,15 @@ def make_coco_transforms(image_set):
     if image_set == 'train':
         return T.Compose([
             T.RandomHorizontalFlip(),
-            T.RandomSelect(
-                T.RandomResize(scales, max_size=1333),
-                T.Compose([
-                    T.RandomResize([400, 500, 600]),
-                    T.RandomSizeCrop(384, 600),
-                    T.RandomResize(scales, max_size=1333),
-                ])
-            ),
+            # T.RandomSelect(
+            #     T.RandomResize(scales, max_size=1333),
+            #     T.Compose([
+            #         T.RandomResize([400, 500, 600]),
+            #         T.RandomSizeCrop(384, 600),
+            #         T.RandomResize(scales, max_size=1333),
+            #     ])
+            # ),
+            T.RandomResize(scales, max_size=1333),
             normalize,
         ])
 
@@ -166,7 +167,7 @@ def build(image_set, args):
 
     PATHS = {
         "train": (root / "train", root / "annotations" / f'train.json'),
-        "val": (root / "train", root / "annotations" / f'train.json'),
+        "val": (root / "val", root / "annotations" / f'val.json'),
         "test": (root / "test2017", root / "annotations" / 'image_info_test-dev2017.json'),
     }
 

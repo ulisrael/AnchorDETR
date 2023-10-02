@@ -31,6 +31,9 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
     metric_logger.add_meter('lr', utils.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     metric_logger.add_meter('class_error', utils.SmoothedValue(window_size=1, fmt='{value:.2f}'))
     metric_logger.add_meter('grad_norm', utils.SmoothedValue(window_size=1, fmt='{value:.2f}'))
+    metric_logger.add_meter('loss_ce', utils.SmoothedValue(window_size=1, fmt='{value:.4f}'))
+    metric_logger.add_meter('loss_giou', utils.SmoothedValue(window_size=1, fmt='{value:.4f}'))
+    metric_logger.add_meter('loss_bbox', utils.SmoothedValue(window_size=1, fmt='{value:.4f}'))
     header = 'Epoch: [{}]'.format(epoch)
     print_freq = 100
 
@@ -72,6 +75,9 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
         metric_logger.update(class_error=loss_dict_reduced['class_error'])
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
         metric_logger.update(grad_norm=grad_total_norm)
+        metric_logger.update(loss_ce=loss_dict_reduced['loss_ce'])
+        metric_logger.update(loss_bbox=loss_dict_reduced['loss_bbox'])
+        metric_logger.update(loss_giou=loss_dict_reduced['loss_giou'])
 
         samples, targets = prefetcher.next()
     # gather the stats from all processes
@@ -87,6 +93,9 @@ def evaluate(model, criterion, postprocessors, data_loader, base_ds, device, out
 
     metric_logger = utils.MetricLogger(delimiter="  ")
     metric_logger.add_meter('class_error', utils.SmoothedValue(window_size=1, fmt='{value:.2f}'))
+    metric_logger.add_meter('loss_ce', utils.SmoothedValue(window_size=1, fmt='{value:.4f}'))
+    metric_logger.add_meter('loss_giou', utils.SmoothedValue(window_size=1, fmt='{value:.4f}'))
+    metric_logger.add_meter('loss_bbox', utils.SmoothedValue(window_size=1, fmt='{value:.4f}'))
     header = 'Test:'
 
     iou_types = tuple(k for k in ('segm', 'bbox') if k in postprocessors.keys())
@@ -120,6 +129,9 @@ def evaluate(model, criterion, postprocessors, data_loader, base_ds, device, out
         #                      **loss_dict_reduced_unscaled)
         metric_logger.update(loss=sum(loss_dict_reduced_scaled.values()))
         metric_logger.update(class_error=loss_dict_reduced['class_error'])
+        metric_logger.update(loss_ce=loss_dict_reduced['loss_ce'])
+        metric_logger.update(loss_bbox=loss_dict_reduced['loss_bbox'])
+        metric_logger.update(loss_giou=loss_dict_reduced['loss_giou'])
 
         orig_target_sizes = torch.stack([t["orig_size"] for t in targets], dim=0)
         results = postprocessors['bbox'](outputs, orig_target_sizes)
