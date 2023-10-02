@@ -15,7 +15,7 @@ from models.matcher import build_matcher
 from models.anchor_detr import SetCriterion, PostProcess
 
 ## Debug imports
-from transformers import DetrImageProcessor
+# from transformers import DetrImageProcessor
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 import util.misc as utils
