@@ -23,7 +23,12 @@ import util.misc as utils
 import datasets.samplers as samplers
 from datasets import build_dataset, get_coco_api_from_dataset
 from engine import evaluate, train_one_epoch
-from models import build_model
+# from models import build_model
+
+# evaluation figure drawing
+import matplotlib.pyplot as plt
+import torchvision.transforms as T
+from PIL import Image, ImageDraw
 
 
 def get_args_parser():
@@ -71,12 +76,12 @@ def get_args_parser():
     parser.add_argument('--num_query_pattern', default=3, type=int,
                         help="Number of query patterns")
     parser.add_argument('--spatial_prior', default='learned', choices=['learned', 'grid'],
-                        type=str,help="Number of query patterns")
+                        type=str, help="Number of query patterns")
     parser.add_argument('--attention_type',
                         # default='nn.MultiheadAttention',
                         default="RCDA",
                         choices=['RCDA', 'nn.MultiheadAttention'],
-                        type=str,help="Type of attention module")
+                        type=str, help="Type of attention module")
     # * Segmentation
     parser.add_argument('--masks', action='store_true',
                         help="Train segmentation head if the flag is provided")
@@ -104,7 +109,7 @@ def get_args_parser():
     # dataset parameters
     parser.add_argument('--dataset_file', default='coco')
     parser.add_argument('--eval_set', default='val', choices=['val', 'test'],
-                        type=str,help="dataset to evaluate")
+                        type=str, help="dataset to evaluate")
     parser.add_argument('--coco_path', default='/data/coco', type=str)
     parser.add_argument('--coco_panoptic_path', type=str)
     parser.add_argument('--remove_difficult', action='store_true')
@@ -114,12 +119,19 @@ def get_args_parser():
                         help='device to use for training / testing')
     parser.add_argument('--seed', default=42, type=int)
     parser.add_argument('--resume', default='', help='resume from checkpoint')
-    parser.add_argument('--auto_resume', default=False, action='store_true', help='whether to resume from last checkpoint')
+    parser.add_argument('--auto_resume', default=False, action='store_true',
+                        help='whether to resume from last checkpoint')
     parser.add_argument('--start_epoch', default=0, type=int, metavar='N',
                         help='start epoch')
     parser.add_argument('--eval', action='store_true')
     parser.add_argument('--num_workers', default=2, type=int)
     parser.add_argument('--cache_mode', default=False, action='store_true', help='whether to cache images on memory')
+
+    ## NEW ARG to limit number of evals
+    parser.add_argument('--eval_checkpoint_period', default=5, type=int,
+                        help="Evaluation and checkpoint period by epoch, defalut is per 10 epochs")
+
+    parser.add_argument('--device_num', default=0, type=int, help='device number')
 
     return parser
 
@@ -131,7 +143,7 @@ def main(args):
     if args.frozen_weights is not None:
         assert args.masks, "Frozen training is meant for segmentation only"
 
-    if isinstance(args.dilation,str):
+    if isinstance(args.dilation, str):
         if args.dilation.lower() == 'false':
             args.dilation = False
         elif args.dilation.lower() == 'true':
@@ -140,7 +152,8 @@ def main(args):
             raise ValueError("The dilation should be True or False")
     print(args)
 
-    device = torch.device(args.device)
+    # device = torch.device(f'{args.device}:{args.device_num}')
+    device = torch.device('cpu')
 
     # fix the seed for reproducibility
     seed = args.seed + utils.get_rank()
@@ -148,7 +161,13 @@ def main(args):
     np.random.seed(seed)
     random.seed(seed)
 
-    model, criterion, postprocessors = build_model(args)
+    # define backbone
+    from models.backbone import build_backbone
+    backbone = build_backbone(args)
+
+    from anchor_testing import build_samanchor, TestAnchorDETR
+    sam_model, criterion, postprocessors = build_samanchor(args)
+    model = TestAnchorDETR(backbone, sam_model)
     model.to(device)
 
     model_without_ddp = model
@@ -179,7 +198,6 @@ def main(args):
                                  drop_last=False, collate_fn=utils.collate_fn, num_workers=args.num_workers,
                                  pin_memory=True)
 
-
     def match_name_keywords(n, name_keywords):
         out = False
         for b in name_keywords:
@@ -195,15 +213,18 @@ def main(args):
         {
             "params":
                 [p for n, p in model_without_ddp.named_parameters()
-                 if not match_name_keywords(n, args.lr_backbone_names) and not match_name_keywords(n, args.lr_linear_proj_names) and p.requires_grad],
+                 if not match_name_keywords(n, args.lr_backbone_names) and not match_name_keywords(n,
+                                                                                                   args.lr_linear_proj_names) and p.requires_grad],
             "lr": args.lr,
         },
         {
-            "params": [p for n, p in model_without_ddp.named_parameters() if match_name_keywords(n, args.lr_backbone_names) and p.requires_grad],
+            "params": [p for n, p in model_without_ddp.named_parameters() if
+                       match_name_keywords(n, args.lr_backbone_names) and p.requires_grad],
             "lr": args.lr_backbone,
         },
         {
-            "params": [p for n, p in model_without_ddp.named_parameters() if match_name_keywords(n, args.lr_linear_proj_names) and p.requires_grad],
+            "params": [p for n, p in model_without_ddp.named_parameters() if
+                       match_name_keywords(n, args.lr_linear_proj_names) and p.requires_grad],
             "lr": args.lr * args.lr_linear_proj_mult,
         }
     ]
@@ -236,7 +257,7 @@ def main(args):
         if not args.resume:
             args.resume = os.path.join(args.output_dir, 'checkpoint.pth')
         if not os.path.isfile(args.resume):
-            args.resume=''
+            args.resume = ''
 
     if args.resume:
         if args.resume.startswith('https'):
@@ -262,7 +283,8 @@ def main(args):
             # todo: this is a hack for doing experiment that resume from checkpoint and also modify lr scheduler (e.g., decrease lr in advance).
             args.override_resumed_lr_drop = True
             if args.override_resumed_lr_drop:
-                print('Warning: (hack) args.override_resumed_lr_drop is set to True, so args.lr_drop would override lr_drop in resumed lr_scheduler.')
+                print(
+                    'Warning: (hack) args.override_resumed_lr_drop is set to True, so args.lr_drop would override lr_drop in resumed lr_scheduler.')
                 lr_scheduler.step_size = args.lr_drop
                 lr_scheduler.base_lrs = list(map(lambda group: group['initial_lr'], optimizer.param_groups))
             lr_scheduler.step(lr_scheduler.last_epoch)
@@ -272,7 +294,7 @@ def main(args):
             test_stats, coco_evaluator = evaluate(
                 model, criterion, postprocessors, data_loader_val, base_ds, device, args.output_dir
             )
-    
+
     if args.eval:
         test_stats, coco_evaluator = evaluate(model, criterion, postprocessors,
                                               data_loader_val, base_ds, device, args.output_dir, save_json=True)
@@ -284,17 +306,18 @@ def main(args):
         return
 
     print("Start training")
-    print(args.output_dir)
+    # print('output_dir: ', args.output_dir)
     start_time = time.time()
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             sampler_train.set_epoch(epoch)
-        train_stats = train_one_epoch(
-            model, criterion, data_loader_train, optimizer, device, epoch, args.clip_max_norm)
+        # train_stats = train_one_epoch(
+        #     model, criterion, data_loader_train, optimizer, device, epoch, args.clip_max_norm
+        # )
         lr_scheduler.step()
         if args.output_dir:
             checkpoint_paths = [output_dir / 'checkpoint.pth']
-            if (epoch + 1) % args.lr_drop == 0 or (epoch + 1) % 100 == 0:
+            if (epoch + 1) % args.lr_drop == 0 or (epoch + 1) % args.eval_checkpoint_period == 0:
                 checkpoint_paths.append(output_dir / f'checkpoint{epoch:04}.pth')
             for checkpoint_path in checkpoint_paths:
                 utils.save_on_master({
@@ -305,30 +328,101 @@ def main(args):
                     'args': args,
                 }, checkpoint_path)
 
-        test_stats, coco_evaluator = evaluate(
-            model, criterion, postprocessors, data_loader_val, base_ds, device, args.output_dir
-        )
+        if (epoch + 1) % args.eval_checkpoint_period == 0:  # per args.eval_checkpoint_period epoch log
+            # test_stats, coco_evaluator = evaluate(
+            #     model, criterion, postprocessors, data_loader_val, base_ds, device, args.output_dir
+            # )
 
-        log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
-                     **{f'test_{k}': v for k, v in test_stats.items()},
-                     'epoch': epoch,
-                     'n_parameters': n_parameters}
-        
-        print(args.output_dir)
+            # Get sample validation data
+            sample_in, sample_tgts = next(iter(data_loader_val))
+
+            # Draw boxes and original image
+            data_dir = './data/coco/val/'
+            image_id = int(sample_tgts[0]['image_id'])
+            orig_image = dataset_val.coco.loadImgs(image_id)[0]
+            orig_image = Image.open(os.path.join(data_dir, orig_image['file_name']))
+            draw = ImageDraw.Draw(orig_image, "RGBA")
+
+            # get annotations and labels
+            annotations = dataset_val.coco.imgToAnns[image_id]
+            cats = dataset_val.coco.cats
+            id2label = {k: v['name'] for k, v in cats.items()}
+
+            for annotation in annotations:
+                box = annotation['bbox']
+                class_idx = int(annotation['category_id'])
+                x, y, w, h = tuple(box)
+                draw.rectangle((x, y, x + w, y + h), outline='red', width=5)
+                draw.text((x, y), id2label[class_idx], fill='white')
+
+            fig, ax = plt.subplots(1, 2, figsize=(10, 5))
+
+            ax[0].imshow(orig_image)
+            ax[0].set_xticks([])
+            ax[0].set_yticks([])
+
+            # Get model outputs
+            with torch.no_grad():
+                model.to(device)
+                model.eval()
+                sample_out = model(sample_in.to(device))
+                orig_target_sizes = torch.stack([t["orig_size"] for t in sample_tgts], dim=0)
+                results = postprocessors['bbox'](sample_out, orig_target_sizes.to(device))
+
+            ## Draw boxes and processed image
+            proc_img, _ = sample_in.decompose()
+            image = T.ToPILImage()(proc_img[0])
+            draw = ImageDraw.Draw(image, "RGBA")
+
+            max_score = 0
+            for i in range(len(results[0]['boxes'])):
+                box = results[0]['boxes'][i]
+                score = results[0]['scores'][i]
+                class_idx = int(results[0]['labels'][i]) - 1
+
+                max_score = max(max_score, score.max())
+
+                if score > 0.95:
+                    x_min, y_min, x_max, y_max = tuple(box)
+                    draw.rectangle((x_min, y_min, x_max, y_max), outline='black', width=5)
+                    draw.text((x_min, y_min), id2label[class_idx], fill='white')
+
+            ax[1].imshow(image)
+            ax[1].set_xticks([])
+            ax[1].set_yticks([])
+            fig.tight_layout()
+            # save figure
+            fig.savefig(os.path.join(args.output_dir, f'sample_val_fig_epoch_{epoch}.png'))
+
+            print()
+            print(f'max box scsore for this round is {max_score:04}')
+            print()
+
+            log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
+                         **{f'test_{k}': v for k, v in test_stats.items()},
+                         'epoch': epoch,
+                         'n_parameters': n_parameters}
+        else:  # per epoch log
+            log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
+                         'epoch': epoch,
+                         'n_parameters': n_parameters}
+
+        # print(args.output_dir)
         if args.output_dir and utils.is_main_process():
             with (output_dir / "log.txt").open("a") as f:
                 f.write(json.dumps(log_stats) + "\n")
 
             # for evaluation logs
-            if coco_evaluator is not None:
-                (output_dir / 'eval').mkdir(exist_ok=True)
-                if "bbox" in coco_evaluator.coco_eval:
-                    filenames = ['latest.pth']
-                    if epoch % 50 == 0:
-                        filenames.append(f'{epoch:03}.pth')
-                    for name in filenames:
-                        torch.save(coco_evaluator.coco_eval["bbox"].eval,
-                                   output_dir / "eval" / name)
+            if (epoch + 1) % args.eval_checkpoint_period == 0:
+                if (coco_evaluator is not None):
+                    (output_dir / 'eval').mkdir(exist_ok=True)
+                    if "bbox" in coco_evaluator.coco_eval:
+                        filenames = ['latest.pth']
+                        if epoch % args.eval_checkpoint_period == 0:
+                            filenames.append(f'{epoch:06}.pth')
+                        for name in filenames:
+                            torch.save(coco_evaluator.coco_eval["bbox"].eval,
+                                       output_dir / "eval" / name)
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
