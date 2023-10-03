@@ -156,7 +156,8 @@ def main(args):
             raise ValueError("The dilation should be True or False")
     print(args)
 
-    device = torch.device(f'{args.device}:{args.device_num}')
+    device = torch.device(args.device)
+    # device = torch.device(f'{args.device}:{args.device_num}')
     # device = torch.device('cpu')
 
     # fix the seed for reproducibility
