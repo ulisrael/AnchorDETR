@@ -130,7 +130,8 @@ def get_args_parser():
     ## NEW ARG to limit number of evals
     parser.add_argument('--eval_checkpoint_period', default=5, type=int,
                         help="Evaluation and checkpoint period by epoch, defalut is per 10 epochs")
-
+    parser.add_argument('--num_classes', default=21, type=int,
+                        help="corresponds to `max_obj_id + 1`, where max_obj_id is the maximum id for a class in your dataset.")
     parser.add_argument('--device_num', default=0, type=int, help='device number')
 
     return parser
@@ -230,6 +231,13 @@ def main(args):
             "lr": args.lr * args.lr_linear_proj_mult,
         }
     ]
+
+    # print()
+    # print('param_dicts: ')
+    # print("len(param_dicts[0]['params']): ", len(param_dicts[0]['params']))
+    # print("len(param_dicts[1]['params']): ", len(param_dicts[1]['params']))
+    # print("len(param_dicts[2]['params']): ", len(param_dicts[2]['params']))
+    # print()
 
     if args.sgd:
         optimizer = torch.optim.SGD(param_dicts, lr=args.lr, momentum=0.9,
@@ -385,7 +393,7 @@ def main(args):
 
                 max_score = max(max_score, score.max())
 
-                if score > 0.95:
+                if score > 0.7:
                     x_min, y_min, x_max, y_max = tuple(box)
                     draw.rectangle((x_min, y_min, x_max, y_max), outline='black', width=5)
                     draw.text((x_min, y_min), id2label[class_idx], fill='white')

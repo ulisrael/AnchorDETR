@@ -21,7 +21,7 @@ from util.misc import inverse_sigmoid
 from models.row_column_decoupled_attention import MultiheadRCDA
 
 class Transformer(nn.Module):
-    def __init__(self, d_model=256, nhead=8,
+    def __init__(self, num_classes=91, d_model=256, nhead=8,
                  num_encoder_layers=6, num_decoder_layers=6, dim_feedforward=1024, dropout=0.,
                  activation="relu", num_feature_levels=3,num_query_position = 300,num_query_pattern=3,
                  spatial_prior="learned",attention_type="RCDA"):
@@ -58,6 +58,12 @@ class Transformer(nn.Module):
         self.pattern = nn.Embedding(self.num_pattern, d_model)
 
         self.num_position = num_query_position
+
+        # print('In transformer')
+        # print('self.num_position: ', self.num_position)
+        # print('num_classes: ', num_classes)
+        # print()
+
         if self.spatial_prior == "learned":
             self.position = nn.Embedding(self.num_position, 2)
 
@@ -73,9 +79,8 @@ class Transformer(nn.Module):
         )
 
         self.num_layers = num_decoder_layers
-        num_classes = 91
-
-        self.class_embed = nn.Linear(d_model, num_classes)
+        self.num_classes = num_classes
+        self.class_embed = nn.Linear(d_model, self.num_classes)
         self.bbox_embed = MLP(d_model, d_model, 4, 3)
 
         self._reset_parameters()
@@ -83,10 +88,10 @@ class Transformer(nn.Module):
     def _reset_parameters(self):
 
         num_pred = self.num_layers
-        num_classes = 91
+        # num_classes = 91
         prior_prob = 0.01
         bias_value = -math.log((1 - prior_prob) / prior_prob)
-        self.class_embed.bias.data = torch.ones(num_classes) * bias_value
+        self.class_embed.bias.data = torch.ones(self.num_classes) * bias_value
 
         nn.init.constant_(self.bbox_embed.layers[-1].weight.data, 0)
         nn.init.constant_(self.bbox_embed.layers[-1].bias.data, 0)
@@ -380,6 +385,7 @@ def _get_activation_fn(activation):
 
 def build_transformer(args):
     return Transformer(
+        num_classes=args.num_classes,
         d_model=args.hidden_dim,
         nhead=args.nheads,
         num_encoder_layers=args.enc_layers,
