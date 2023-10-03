@@ -13,6 +13,7 @@ Train and eval functions used in main.py
 import math
 import os
 import sys
+import wandb
 from typing import Iterable
 
 import torch
@@ -56,6 +57,14 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
         losses_reduced_scaled = sum(loss_dict_reduced_scaled.values())
 
         loss_value = losses_reduced_scaled.item()
+
+        wandb.log({
+            'training_loss': loss_value,
+            'training_class_error': loss_dict_reduced['class_error'],
+            'training_loss_ce': loss_dict_reduced['loss_ce'],
+            'training_loss_bbox': loss_dict_reduced['loss_bbox'],
+            'training_loss_giou': loss_dict_reduced['loss_giou'],
+        })
 
         if not math.isfinite(loss_value):
             print("Loss is {}, stopping training".format(loss_value))
@@ -184,4 +193,14 @@ def evaluate(model, criterion, postprocessors, data_loader, base_ds, device, out
         stats['PQ_all'] = panoptic_res["All"]
         stats['PQ_th'] = panoptic_res["Things"]
         stats['PQ_st'] = panoptic_res["Stuff"]
+
+    wandb.log({
+        'val_class_error': stats['class_error'],
+        'val_loss_ce': stats['loss_ce'],
+        'val_loss_bbox': stats['loss_bbox'],
+        'val_loss_giou': stats['loss_giou'],
+        'val_loss': stats['loss'],
+        'cocoeval_bbox': stats['coco_eval_bbox'],
+    })
+
     return stats, coco_evaluator

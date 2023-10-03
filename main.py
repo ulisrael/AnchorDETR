@@ -29,6 +29,7 @@ from engine import evaluate, train_one_epoch
 import matplotlib.pyplot as plt
 import torchvision.transforms as T
 from PIL import Image, ImageDraw
+import wandb
 
 
 def get_args_parser():
@@ -134,6 +135,8 @@ def get_args_parser():
                         help="corresponds to `max_obj_id + 1`, where max_obj_id is the maximum id for a class in your dataset.")
     parser.add_argument('--device_num', default=0, type=int, help='device number')
 
+    parser.add_argument('--wandb_run_name', default='detr_testing', type=str, help='wandb run name')
+
     return parser
 
 
@@ -161,6 +164,10 @@ def main(args):
     torch.manual_seed(seed)
     np.random.seed(seed)
     random.seed(seed)
+
+    run_name = args.wandb_run_name
+
+    wandb.init(project='anchor_detr', entity='allcell', name=run_name)
 
     # define backbone
     from models.backbone import build_backbone
@@ -404,6 +411,8 @@ def main(args):
             fig.tight_layout()
             # save figure
             fig.savefig(os.path.join(args.output_dir, f'sample_val_fig_epoch_{epoch}.png'))
+
+            wandb.log({'sample_val_fig': wandb.Image(fig)})
 
             print()
             print(f'max box scsore for this round is {max_score:04}')
