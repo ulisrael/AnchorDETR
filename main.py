@@ -187,8 +187,8 @@ def main(args):
     dataset_val = build_dataset(image_set=args.eval_set, args=args)
 
     ## tmp code for debuging on mac
-    dataset_train = torch.utils.data.Subset(dataset_train, range(8))
-    dataset_val = torch.utils.data.Subset(dataset_val, range(8))
+    # dataset_train = torch.utils.data.Subset(dataset_train, range(8))
+    # dataset_val = torch.utils.data.Subset(dataset_val, range(8))
 
     if args.distributed:
         if args.cache_mode:
@@ -362,8 +362,8 @@ def main(args):
             # Draw boxes and original image
             data_dir = './data/coco/val/'
             image_id = int(sample_tgts[0]['image_id'])
-            orig_image = dataset_val.coco.loadImgs(image_id)[0]
-            orig_image = Image.open(os.path.join(data_dir, orig_image['file_name']))
+            orig_image_path = dataset_val.coco.loadImgs(image_id)[0]
+            orig_image = Image.open(os.path.join(data_dir, orig_image_path['file_name']))
             draw = ImageDraw.Draw(orig_image, "RGBA")
 
             # get annotations and labels
