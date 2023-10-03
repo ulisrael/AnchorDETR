@@ -185,6 +185,10 @@ def main(args):
     dataset_train = build_dataset(image_set='train', args=args)
     dataset_val = build_dataset(image_set=args.eval_set, args=args)
 
+    ## tmp code for debuging on mac
+    dataset_train = torch.utils.data.Subset(dataset_train, range(8))
+    dataset_val = torch.utils.data.Subset(dataset_val, range(8))
+
     if args.distributed:
         if args.cache_mode:
             sampler_train = samplers.NodeDistributedSampler(dataset_train)
