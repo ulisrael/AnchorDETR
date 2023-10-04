@@ -156,8 +156,8 @@ def main(args):
             raise ValueError("The dilation should be True or False")
     print(args)
 
-    device = torch.device(args.device)
-    # device = torch.device(f'{args.device}:{args.device_num}')
+    # device = torch.device(args.device)
+    device = torch.device(f'{args.device}:{args.device_num}')
     # device = torch.device('cpu')
 
     # fix the seed for reproducibility
@@ -360,10 +360,10 @@ def main(args):
             sample_in, sample_tgts = next(iter(data_loader_val))
 
             # Draw boxes and original image
-            data_dir = './data/coco/val/'
+            # data_dir = './data/coco/val/'
             image_id = int(sample_tgts[0]['image_id'])
             orig_image_path = dataset_val.coco.loadImgs(image_id)[0]
-            orig_image = Image.open(os.path.join(data_dir, orig_image_path['file_name']))
+            orig_image = Image.open(os.path.join(str(data_loader_val.dataset.root), orig_image_path['file_name']))
             draw = ImageDraw.Draw(orig_image, "RGBA")
 
             # get annotations and labels
@@ -375,8 +375,8 @@ def main(args):
                 box = annotation['bbox']
                 class_idx = int(annotation['category_id'])
                 x, y, w, h = tuple(box)
-                draw.rectangle((x, y, x + w, y + h), outline='red', width=5)
-                draw.text((x, y), id2label[class_idx], fill='white')
+                draw.rectangle((x, y, x + w, y + h), outline='red', width=1)
+                # draw.text((x, y), id2label[class_idx], fill='white')
 
             fig, ax = plt.subplots(1, 2, figsize=(10, 5))
 
@@ -394,7 +394,8 @@ def main(args):
 
             ## Draw boxes and processed image
             proc_img, _ = sample_in.decompose()
-            image = T.ToPILImage()(proc_img[0])
+            rescaled_img = (proc_img[0]-proc_img[0].min())/(proc_img[0].max()-proc_img[0].min())
+            image = T.ToPILImage()(rescaled_img)
             draw = ImageDraw.Draw(image, "RGBA")
 
             max_score = 0
@@ -407,8 +408,8 @@ def main(args):
 
                 if score > 0.7:
                     x_min, y_min, x_max, y_max = tuple(box)
-                    draw.rectangle((x_min, y_min, x_max, y_max), outline='black', width=5)
-                    draw.text((x_min, y_min), id2label[class_idx], fill='white')
+                    draw.rectangle((x_min, y_min, x_max, y_max), outline='red', width=1)
+                    # draw.text((x_min, y_min), id2label[class_idx], fill='white')
 
             ax[1].imshow(image)
             ax[1].set_xticks([])
