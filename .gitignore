@@ -1,0 +1,14 @@
+__MACOSX/
+data/
+old_data/
+__pycache__
+.github
+.ipynb_checkpoints/
+wandb/
+
+tmp_out/
+tmp_out_3/
+tmp_out_*
+outs_udpated_fixes/
+QL_debug/
+
