@@ -29,6 +29,7 @@ from engine import evaluate, train_one_epoch
 import matplotlib.pyplot as plt
 import torchvision.transforms as T
 from PIL import Image, ImageDraw
+from skimage.io import imread
 import wandb
 
 
@@ -341,7 +342,7 @@ def main(args):
         if args.output_dir:
             checkpoint_paths = [output_dir / 'checkpoint.pth']
             if (epoch + 1) % args.lr_drop == 0 or (epoch + 1) % args.eval_checkpoint_period == 0:
-                checkpoint_paths.append(output_dir / f'checkpoint{epoch:04}.pth')
+                checkpoint_paths.append(output_dir / f'checkpoint{epoch:06}.pth')
             for checkpoint_path in checkpoint_paths:
                 utils.save_on_master({
                     'model': model_without_ddp.state_dict(),
@@ -363,7 +364,10 @@ def main(args):
             # data_dir = './data/coco/val/'
             image_id = int(sample_tgts[0]['image_id'])
             orig_image_path = dataset_val.coco.loadImgs(image_id)[0]
-            orig_image = Image.open(os.path.join(str(data_loader_val.dataset.root), orig_image_path['file_name']))
+            # orig_image = Image.open(os.path.join(str(data_loader_val.dataset.root), orig_image_path['file_name'])) # err for tiff
+            np_img = imread(os.path.join(str(data_loader_val.dataset.root), orig_image_path['file_name'])).astype(np.float32)
+            uint8_img = (np_img/(np_img.max()+1e-5)*255.0).astype('uint8')
+            orig_image = Image.fromarray(uint8_img, 'RGB')
             draw = ImageDraw.Draw(orig_image, "RGBA")
 
             # get annotations and labels
@@ -406,7 +410,7 @@ def main(args):
 
                 max_score = max(max_score, score.max())
 
-                if score > 0.7:
+                if score > 0.4:
                     x_min, y_min, x_max, y_max = tuple(box)
                     draw.rectangle((x_min, y_min, x_max, y_max), outline='red', width=1)
                     # draw.text((x_min, y_min), id2label[class_idx], fill='white')
