@@ -36,7 +36,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
     metric_logger.add_meter('loss_giou', utils.SmoothedValue(window_size=1, fmt='{value:.4f}'))
     metric_logger.add_meter('loss_bbox', utils.SmoothedValue(window_size=1, fmt='{value:.4f}'))
     header = 'Epoch: [{}]'.format(epoch)
-    print_freq = 100
+    print_freq = 20
 
     prefetcher = data_prefetcher(data_loader, device, prefetch=True)
     samples, targets = prefetcher.next()
@@ -200,6 +200,8 @@ def evaluate(model, criterion, postprocessors, data_loader, base_ds, device, out
         'val_loss_bbox': stats['loss_bbox'],
         'val_loss_giou': stats['loss_giou'],
         'val_loss': stats['loss'],
+        'val_coco_box_ap': stats['coco_eval_bbox'][0],
+        'val_coco_box_ap50': stats['coco_eval_bbox'][1],
         'cocoeval_bbox': stats['coco_eval_bbox'],
     })
 
