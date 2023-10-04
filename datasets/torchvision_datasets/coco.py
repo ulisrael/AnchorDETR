@@ -17,6 +17,10 @@ import os.path
 import tqdm
 from io import BytesIO
 
+#################################
+import numpy as np
+from skimage.io import imread
+
 
 class CocoDetection(VisionDataset):
     """`MS Coco Detection <http://mscoco.org/dataset/#detections-challenge2016>`_ Dataset.
@@ -32,7 +36,7 @@ class CocoDetection(VisionDataset):
     """
 
     def __init__(self, root, annFile, transform=None, target_transform=None, transforms=None,
-                 cache_mode=False, local_rank=0, local_size=1):
+                 cache_mode=False, local_rank=0, local_size=1, pin_memory=False):
         super(CocoDetection, self).__init__(root, transforms, transform, target_transform)
         from pycocotools.coco import COCO
         self.coco = COCO(annFile)
@@ -58,8 +62,20 @@ class CocoDetection(VisionDataset):
             if path not in self.cache.keys():
                 with open(os.path.join(self.root, path), 'rb') as f:
                     self.cache[path] = f.read()
-            return Image.open(BytesIO(self.cache[path])).convert('RGB')
-        return Image.open(os.path.join(self.root, path)).convert('RGB')
+            #     return Image.open(BytesIO(self.cache[path])).convert('RGB')
+            # return Image.open(os.path.join(self.root, path)).convert('RGB')
+            np_img = imread(BytesIO(self.cache[path])).astype(np.float32)
+        else:  # no cache, read image from path
+            np_img = imread(os.path.join(self.root, path)).astype(np.float32)
+
+        # print(f'np_img.shape: {np_img.shape}')
+        # print(f'max: {np.max(np_img, axis=(0,1))}, min: {np.min(np_img, axis=(0,1))}, mean: {np.mean(np_img, axis=(0,1))}, std: {np.std(np_img, axis=(0,1))}')
+        pil_img = Image.fromarray((np_img / (np.max(np_img) + 1e-5) * 255.0).astype('uint8'),
+                                  'RGB')  # general return image
+
+        # np_img = pil_img
+        # print(f'max: {np.max(np_img, axis=(0,1))}, min: {np.min(np_img, axis=(0,1))}, mean: {np.mean(np_img, axis=(0,1))}, std: {np.std(np_img, axis=(0,1))}')
+        return pil_img
 
     def __getitem__(self, index):
         """

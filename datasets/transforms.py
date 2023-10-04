@@ -147,7 +147,8 @@ def pad(image, target, padding):
         return padded_image, None
     target = target.copy()
     # should we do something wrt the original size?
-    target["size"] = torch.tensor(padded_image[::-1])
+    w, h = padded_image.size
+    target["size"] = torch.tensor([h, w])
     if "masks" in target:
         target['masks'] = torch.nn.functional.pad(target['masks'], (0, padding[0], 0, padding[1]))
     return padded_image, target
@@ -206,6 +207,16 @@ class RandomResize(object):
         size = random.choice(self.sizes)
         return resize(img, target, size, self.max_size)
 
+class FixedResize(object):
+    def __init__(self, sizes, max_size=None):
+        assert isinstance(sizes, (list, tuple))
+        assert len(sizes) == 2, f'len(sizes) = {len(size)} != 2, (width, height) should be given'
+        self.sizes = sizes
+        self.max_size = max_size
+
+    def __call__(self, img, target=None):
+        size = self.sizes # directly use the given size
+        return resize(img, target, size, self.max_size)
 
 class RandomPad(object):
     def __init__(self, max_pad):
@@ -215,6 +226,25 @@ class RandomPad(object):
         pad_x = random.randint(0, self.max_pad)
         pad_y = random.randint(0, self.max_pad)
         return pad(img, target, (pad_x, pad_y))
+
+
+class RandomSizeCrop_same(object):
+    def __init__(self, min_size: int, max_size: int):
+        self.min_size = min_size
+        self.max_size = max_size
+
+    def __call__(self, img: PIL.Image.Image, target: dict):
+        crop_size = random.randint(self.min_size, min(img.width, img.height, self.max_size))
+        region = T.RandomCrop.get_params(img, [crop_size, crop_size])
+        return crop(img, target, region)
+
+class RandomPad_same(object):
+    def __init__(self, max_pad):
+        self.max_pad = max_pad
+
+    def __call__(self, img, target):
+        pad = random.randint(0, self.max_pad)
+        return pad(img, target, (pad, pad))
 
 
 class RandomSelect(object):
