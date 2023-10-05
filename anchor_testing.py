@@ -287,15 +287,18 @@ class SAMAnchorDETR(nn.Module):
                                 dictionnaries containing the two above keys for each decoder layer.
         """
 
-        srcs = []
-        masks = []
-        for l, feat in enumerate(feats):
-            src, mask = feat[0], feat[1]
-            srcs.append(self.input_proj[l](src).unsqueeze(1))
-            masks.append(mask)
-            assert mask is not None
+        b, c, h, w = feats.shape
+        masks = [torch.zeros(size=(b, h, w), dtype=torch.bool)]
+        srcs = self.input_proj[0](feats).unsqueeze(1)
 
-        srcs = torch.cat(srcs, dim=1)
+        ## NEEDED for multiple feature levels
+        # for l, feat in enumerate(srcs):
+        #     src, mask = feat[0], feat[1]
+        #     srcs.append(self.input_proj[l](src).unsqueeze(1))
+        #     masks.append(mask)
+        #     assert mask is not None
+
+        # srcs = torch.cat(srcs, dim=1)
 
         outputs_class, outputs_coord = self.transformer(srcs, masks)
 
@@ -376,29 +379,20 @@ def build_samanchor(args):
 
     return model, criterion, postprocessors
 
+
+# SAM test anchor
 class TestAnchorDETR(nn.Module):
     def __init__(self, backbone, model):
         super().__init__()
         self.backbone = backbone
         self.model = model
 
-
-
     def forward(self, samples: NestedTensor):
-        if not isinstance(samples, NestedTensor):
-            samples = nested_tensor_from_tensor_list(samples)
         features = self.backbone(samples)
-
-
-        feat_list = []
-        for l, feat in enumerate(features):
-            src, mask = feat.decompose()
-            feat_list.append([src, mask])
-
-        out = self.model(feat_list)
+        # masks = torch.ones_like(features)
+        out = self.model(features)
 
         return out
-
 
 
 
@@ -548,38 +542,138 @@ if __name__ == "__main__":
         print(f'loss at the end of epoch {epoch}: {losses}')
 
 
-    # transformer = build_transformer(args)
-    #
-    # anchor_model = AnchorDETR(
-    #     transformer,
-    #     num_feature_levels=1,
-    #     aux_loss=True,
-    # )
-    #
-    # matcher = build_matcher(args)
-    #
-    # weight_dict = {'loss_ce': args.cls_loss_coef, 'loss_bbox': args.bbox_loss_coef}
-    # weight_dict['loss_giou'] = args.giou_loss_coef
-    #
-    # # TODO this is a hack
-    # if args.aux_loss:
-    #     aux_weight_dict = {}
-    #     for i in range(args.dec_layers - 1):
-    #         aux_weight_dict.update({k + f'_{i}': v for k, v in weight_dict.items()})
-    #     aux_weight_dict.update({k + f'_enc': v for k, v in weight_dict.items()})
-    #     weight_dict.update(aux_weight_dict)
-    #
-    # losses = ['labels', 'boxes']
-    # if args.masks:
-    #     losses += ["masks"]
-    # # num_classes, matcher, weight_dict, losses, focal_alpha=0.25
-    # criterion = SetCriterion(num_classes, matcher, weight_dict, losses, focal_alpha=args.focal_alpha)
-    # criterion.to(device)
-    # postprocessors = {'bbox': PostProcess()}
-    #
-    # out_test = anchor_model(feat_list)
-    #
-    #
-    # print(out_test['pred_logits'].shape, out_test['pred_boxes'].shape)
-    #
-    # print()
+"""
+OLD CODE that works
+"""
+
+## old sam model ##
+
+# class SAMAnchorDETR(nn.Module):
+#     """ This is the AnchorDETR module that performs object detection """
+#
+#     def __init__(self, transformer,  num_feature_levels=1, aux_loss=True):
+#         """ Initializes the model.
+#         Parameters:
+#             transformer: torch module of the transformer architecture. See transformer.py
+#             num_classes: number of object classes
+#             aux_loss: True if auxiliary decoding losses (loss at each decoder layer) are to be used.
+#         """
+#         super().__init__()
+#         self.transformer = transformer
+#         hidden_dim = transformer.d_model
+#
+#         #TODO NEED this info from backbone for imp - These are hard coded in
+#         # len(backbone.strides)
+#         # backbone.num_channels
+#
+#         self.num_feature_levels = num_feature_levels
+#         if num_feature_levels > 1:
+#             # num_backbone_outs = len(backbone.strides)
+#             num_backbone_outs = 1 # this is hard code
+#             input_proj_list = []
+#             for _ in range(num_backbone_outs):
+#                 # in_channels = backbone.num_channels
+#                 in_channels = 2048
+#                 if _ == 0:
+#                     input_proj_list.append(nn.Sequential(
+#                         nn.Conv2d(in_channels, hidden_dim, kernel_size=3, stride=2, padding=1),
+#                         nn.GroupNorm(32, hidden_dim),
+#                     ))
+#                 else:
+#                     input_proj_list.append(nn.Sequential(
+#                         nn.Conv2d(in_channels, hidden_dim, kernel_size=1),
+#                         nn.GroupNorm(32, hidden_dim),
+#                     ))
+#             self.input_proj = nn.ModuleList(input_proj_list)
+#         else:
+#             self.input_proj = nn.ModuleList([
+#                 nn.Sequential(
+#                     # nn.Conv2d(backbone.num_channels[0], hidden_dim, kernel_size=1),
+#                     nn.Conv2d(2048, hidden_dim, kernel_size=1),
+#                     nn.GroupNorm(32, hidden_dim),
+#                 )])
+#         self.aux_loss = aux_loss
+#
+#         for proj in self.input_proj:
+#             nn.init.xavier_uniform_(proj[0].weight, gain=1)
+#             nn.init.constant_(proj[0].bias, 0)
+#
+#     def forward(self, feats: List[List]):
+#         """ The forward expects a NestedTensor, which consists of:
+#                - samples.tensor: batched images, of shape [batch_size x 3 x H x W]
+#                - samples.mask: a binary mask of shape [batch_size x H x W], containing 1 on padded pixels
+#
+#             It returns a dict with the following elements:
+#                - "pred_logits": the classification logits (including no-object) for all queries.
+#                                 Shape= [batch_size x num_queries x (num_classes + 1)]
+#                - "pred_boxes": The normalized boxes coordinates for all queries, represented as
+#                                (center_x, center_y, height, width). These values are normalized in [0, 1],
+#                                relative to the size of each individual image (disregarding possible padding).
+#                                See PostProcess for information on how to retrieve the unnormalized bounding box.
+#                - "aux_outputs": Optional, only returned when auxilary losses are activated. It is a list of
+#                                 dictionnaries containing the two above keys for each decoder layer.
+#         """
+#
+#         srcs = []
+#         masks = []
+#         for l, feat in enumerate(feats):
+#             src, mask = feat[0], feat[1]
+#             srcs.append(self.input_proj[l](src).unsqueeze(1))
+#             masks.append(mask)
+#             assert mask is not None
+#
+#         srcs = torch.cat(srcs, dim=1)
+#
+#         outputs_class, outputs_coord = self.transformer(srcs, masks)
+#
+#         out = {'pred_logits': outputs_class[-1], 'pred_boxes': outputs_coord[-1]}
+#         if self.aux_loss:
+#             out['aux_outputs'] = self._set_aux_loss(outputs_class, outputs_coord)
+#
+#         return out
+#
+#     def forward_inference(self, feat_list, targets):
+#         # TODO we need orig img size for postprocessing
+#         pass
+#
+#         # outputs = self.forward(feat_list)
+#         #
+#         # orig_target_sizes = torch.stack([t["orig_size"] for t in targets], dim=0)
+#         # results = self.postprocessors['bbox'](outputs, orig_target_sizes)
+#         # res = {target['image_id'].item(): output for target, output in zip(targets, results)}
+#         #
+#         # return res
+#
+#     @torch.jit.unused
+#     def _set_aux_loss(self, outputs_class, outputs_coord):
+#         # this is a workaround to make torchscript happy, as torchscript
+#         # doesn't support dictionary with non-homogeneous values, such
+#         # as a dict having both a Tensor and a list.
+#         return [{'pred_logits': a, 'pred_boxes': b}
+#                 for a, b in zip(outputs_class[:-1], outputs_coord[:-1])]
+
+
+## old test anchor wrapper ##
+# ### test anchor that works by itself - changing for SAM
+# class TestAnchorDETR_old(nn.Module):
+#     def __init__(self, backbone, model):
+#         super().__init__()
+#         self.backbone = backbone
+#         self.model = model
+#
+#
+#
+#     def forward(self, samples: NestedTensor):
+#         if not isinstance(samples, NestedTensor):
+#             samples = nested_tensor_from_tensor_list(samples)
+#         features = self.backbone(samples)
+#
+#
+#         feat_list = []
+#         for l, feat in enumerate(features):
+#             src, mask = feat.decompose()
+#             feat_list.append([src, mask])
+#
+#         out = self.model(feat_list)
+#
+#         return out
