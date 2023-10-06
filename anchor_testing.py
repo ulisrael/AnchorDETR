@@ -299,6 +299,11 @@ class SAMAnchorDETR(nn.Module):
 
         # srcs = torch.cat(srcs, dim=1)
 
+        # TODO: correct here?
+        masks = torch.stack(masks, dim=1)
+        masks = masks.to(torch.bool)
+        masks = masks.to(srcs.device)
+
         outputs_class, outputs_coord = self.transformer(srcs, masks)
 
         out = {'pred_logits': outputs_class[-1], 'pred_boxes': outputs_coord[-1]}
