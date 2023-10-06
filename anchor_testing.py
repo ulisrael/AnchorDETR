@@ -224,7 +224,7 @@ def viz_coco_img(data_dir, train_ds, img, tgt):
 class SAMAnchorDETR(nn.Module):
     """ This is the AnchorDETR module that performs object detection """
 
-    def __init__(self, transformer,  num_feature_levels=1, aux_loss=True):
+    def __init__(self, transformer,  num_feature_levels=1, aux_loss=True, in_channels=2048):
         """ Initializes the model.
         Parameters:
             transformer: torch module of the transformer architecture. See transformer.py
@@ -246,7 +246,6 @@ class SAMAnchorDETR(nn.Module):
             input_proj_list = []
             for _ in range(num_backbone_outs):
                 # in_channels = backbone.num_channels
-                in_channels = 2048
                 if _ == 0:
                     input_proj_list.append(nn.Sequential(
                         nn.Conv2d(in_channels, hidden_dim, kernel_size=3, stride=2, padding=1),
@@ -262,7 +261,7 @@ class SAMAnchorDETR(nn.Module):
             self.input_proj = nn.ModuleList([
                 nn.Sequential(
                     # nn.Conv2d(backbone.num_channels[0], hidden_dim, kernel_size=1),
-                    nn.Conv2d(2048, hidden_dim, kernel_size=1),
+                    nn.Conv2d(in_channels, hidden_dim, kernel_size=1),
                     nn.GroupNorm(32, hidden_dim),
                 )])
         self.aux_loss = aux_loss
@@ -354,6 +353,7 @@ def build_samanchor(args):
         transformer,
         num_feature_levels=1,
         aux_loss=True,
+        in_channels=args.in_channels,
     )
 
     matcher = build_matcher(args)
