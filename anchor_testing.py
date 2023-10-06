@@ -370,8 +370,8 @@ def build_samanchor(args):
         weight_dict.update(aux_weight_dict)
 
     losses = ['labels', 'boxes']
-    if args.masks:
-        losses += ["masks"]
+    # if args.masks:
+        # losses += ["masks"]
     # num_classes, matcher, weight_dict, losses, focal_alpha=0.25
     criterion = SetCriterion(args.num_classes, matcher, weight_dict, losses, focal_alpha=args.focal_alpha)
     criterion.to(device)
