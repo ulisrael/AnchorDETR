@@ -358,7 +358,7 @@ def build_samanchor(args):
         transformer,
         num_feature_levels=1,
         aux_loss=True,
-        in_channels=args.in_channels,
+        # in_channels=args.in_channels,
     )
 
     matcher = build_matcher(args)
