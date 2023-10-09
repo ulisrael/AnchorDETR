@@ -188,8 +188,8 @@ def main(args):
     dataset_val = build_dataset(image_set=args.eval_set, args=args)
 
     ## tmp code for debuging on mac
-    # dataset_train = torch.utils.data.Subset(dataset_train, range(8))
-    # dataset_val = torch.utils.data.Subset(dataset_val, range(8))
+    # dataset_train = torch.utils.data.Subset(dataset_train, range(4))
+    # dataset_val = torch.utils.data.Subset(dataset_val, range(4))
 
     if args.distributed:
         if args.cache_mode:

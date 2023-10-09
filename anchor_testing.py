@@ -10,16 +10,16 @@ import torch.nn.functional as F
 
 from typing import List
 
-from AnchorDETR.models.transformer import build_transformer
-from AnchorDETR.models.matcher import build_matcher
-from AnchorDETR.models.anchor_detr import SetCriterion, PostProcess
+from models.transformer import build_transformer
+from models.matcher import build_matcher
+from models.anchor_detr import SetCriterion, PostProcess
 
 ## Debug imports
 # from transformers import DetrImageProcessor
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
-import AnchorDETR.util.misc as utils
-from AnchorDETR.util.misc import nested_tensor_from_tensor_list, NestedTensor
+import util.misc as utils
+from util.misc import nested_tensor_from_tensor_list, NestedTensor
 
 
 
@@ -286,23 +286,15 @@ class SAMAnchorDETR(nn.Module):
                                 dictionnaries containing the two above keys for each decoder layer.
         """
 
-        b, c, h, w = feats.shape
-        masks = [torch.zeros(size=(b, h, w), dtype=torch.bool)]
-        srcs = self.input_proj[0](feats).unsqueeze(1)
+        srcs = []
+        masks = []
+        for l, feat in enumerate(feats):
+            src, mask = feat[0], feat[1]
+            srcs.append(self.input_proj[l](src).unsqueeze(1))
+            masks.append(mask)
+            assert mask is not None
 
-        ## NEEDED for multiple feature levels
-        # for l, feat in enumerate(srcs):
-        #     src, mask = feat[0], feat[1]
-        #     srcs.append(self.input_proj[l](src).unsqueeze(1))
-        #     masks.append(mask)
-        #     assert mask is not None
-
-        # srcs = torch.cat(srcs, dim=1)
-
-        # TODO: correct here?
-        masks = torch.stack(masks, dim=1)
-        masks = masks.to(torch.bool)
-        masks = masks.to(srcs.device)
+        srcs = torch.cat(srcs, dim=1)
 
         outputs_class, outputs_coord = self.transformer(srcs, masks)
 
@@ -375,8 +367,8 @@ def build_samanchor(args):
         weight_dict.update(aux_weight_dict)
 
     losses = ['labels', 'boxes']
-    # if args.masks:
-        # losses += ["masks"]
+    if args.masks:
+        losses += ["masks"]
     # num_classes, matcher, weight_dict, losses, focal_alpha=0.25
     criterion = SetCriterion(args.num_classes, matcher, weight_dict, losses, focal_alpha=args.focal_alpha)
     criterion.to(device)
@@ -393,9 +385,17 @@ class TestAnchorDETR(nn.Module):
         self.model = model
 
     def forward(self, samples: NestedTensor):
+        if not isinstance(samples, NestedTensor):
+            samples = nested_tensor_from_tensor_list(samples)
         features = self.backbone(samples)
-        # masks = torch.ones_like(features)
-        out = self.model(features)
+
+
+        feat_list = []
+        for l, feat in enumerate(features):
+            src, mask = feat.decompose()
+            feat_list.append([src, mask])
+
+        out = self.model(feat_list)
 
         return out
 

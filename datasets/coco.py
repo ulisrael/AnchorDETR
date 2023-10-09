@@ -217,18 +217,18 @@ def build(image_set, args):
     #     "test": (root / "test2017", root / "annotations" / 'image_info_test-dev2017.json'),
     # }
 
-    # # voc2007 paths
-    # PATHS = {
-    #     "train": (root / "train", root / "annotations" / f'train_new.json'),
-    #     "val": (root / "val", root / "annotations" / f'val_new.json'),
-    #     "test": (root / "test2017", root / "annotations" / 'image_info_test-dev2017.json'),
-    # }
+    # voc2007 paths
+    PATHS = {
+        "train": (root / "train", root / "annotations" / f'train_new.json'),
+        "val": (root / "val", root / "annotations" / f'val_new.json'),
+        "test": (root / "test2017", root / "annotations" / 'image_info_test-dev2017.json'),
+    }
 
     # omnipose paths
-    PATHS = {
-        "train": (root / "train_256", root / "annotations" / f'train_BF_RLE_256.json'),
-        "val": (root / "test_256", root / "annotations" / f'test_BF_RLE_256.json'),
-    }
+    # PATHS = {
+    #     "train": (root / "train_256", root / "annotations" / f'train_BF_RLE_256.json'),
+    #     "val": (root / "test_256", root / "annotations" / f'test_BF_RLE_256.json'),
+    # }
 
     # # tissuenet paths
     # PATHS = {
