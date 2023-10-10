@@ -125,83 +125,83 @@ class ConvertCocoPolysToMask(object):
 def make_coco_transforms(image_set):
     # #############################################################
     # # coco augments
-    # normalize = T.Compose([
-    #     T.ToTensor(),
-    #     T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    # ])
-
-    # scales = [480, 512, 544, 576, 608, 640, 672, 704, 736, 768, 800]
-
-    # if image_set == 'train':
-    #     return T.Compose([
-    #         T.RandomHorizontalFlip(),
-    #         T.RandomSelect(
-    #             T.RandomResize(scales, max_size=1333),
-    #             T.Compose([
-    #                 T.RandomResize([400, 500, 600]),
-    #                 T.RandomSizeCrop(384, 600),
-    #                 T.RandomResize(scales, max_size=1333),
-    #             ])
-    #         ),
-    #         normalize,
-    #     ])
-
-    # if image_set == 'val' or image_set == 'test':
-    #     return T.Compose([
-    #         T.RandomResize([800], max_size=1333),
-    #         normalize,
-    #     ])
-    # #############################################################
-
-    #############################################################
-    # cell image augs. naive versioon: assume same 256x256 size for all input image files.
     normalize = T.Compose([
         T.ToTensor(),
-        T.Normalize([0.3, 0.3, 0.3], [0.3, 0.3, 0.3])
+        T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
 
-    scales = [256] # fixed input size 256x256
+    scales = [480, 512, 544, 576, 608, 640, 672, 704, 736, 768, 800]
 
     if image_set == 'train':
         return T.Compose([
             T.RandomHorizontalFlip(),
             T.RandomSelect(
-                T.FixedResize([256,256]), # directly return 256x256 image
-                T.RandomSelect(
-                    # zoom in to max 128x128
-                    T.Compose([
-                        T.RandomSizeCrop(128, 256),
-                        T.FixedResize([256,256]),
-                    ]),
-                    # zoom out to max 512x512
-                    T.Compose([
-                        T.RandomPad(256),
-                        T.RandomSizeCrop(200, 512),
-                        T.FixedResize([256,256]),
-                    ]), p=0.5
-                ), p=0.33
+                T.RandomResize(scales, max_size=1333),
+                T.Compose([
+                    T.RandomResize([400, 500, 600]),
+                    T.RandomSizeCrop(384, 600),
+                    T.RandomResize(scales, max_size=1333),
+                ])
             ),
-
-            # # zoom in to max 128x128
-            # T.Compose([
-            #     T.RandomSizeCrop(128, 256),
-            #     T.FixedResize([256,256]),
-            # ]),
-
-            # # zoom out to max 512x512
-            # T.Compose([
-            #             T.RandomPad(256),
-            #             T.RandomSizeCrop(200, 512),
-            #             T.FixedResize([256,256]),
-            #         ]),
             normalize,
         ])
 
-    if image_set == 'val' or image_set == 'test': # always use 256x256 image so no aug required
+    if image_set == 'val' or image_set == 'test':
         return T.Compose([
-            T.RandomResize([256], max_size=1333),
+            T.RandomResize([800], max_size=1333),
             normalize,
         ])
+    # #############################################################
+
+    #############################################################
+    # cell image augs. naive versioon: assume same 256x256 size for all input image files.
+    # normalize = T.Compose([
+    #     T.ToTensor(),
+    #     T.Normalize([0.3, 0.3, 0.3], [0.3, 0.3, 0.3])
+    # ])
+    #
+    # scales = [256] # fixed input size 256x256
+    #
+    # if image_set == 'train':
+    #     return T.Compose([
+    #         T.RandomHorizontalFlip(),
+    #         T.RandomSelect(
+    #             T.FixedResize([256,256]), # directly return 256x256 image
+    #             T.RandomSelect(
+    #                 # zoom in to max 128x128
+    #                 T.Compose([
+    #                     T.RandomSizeCrop(128, 256),
+    #                     T.FixedResize([256,256]),
+    #                 ]),
+    #                 # zoom out to max 512x512
+    #                 T.Compose([
+    #                     T.RandomPad(256),
+    #                     T.RandomSizeCrop(200, 512),
+    #                     T.FixedResize([256,256]),
+    #                 ]), p=0.5
+    #             ), p=0.33
+    #         ),
+    #
+    #         # # zoom in to max 128x128
+    #         # T.Compose([
+    #         #     T.RandomSizeCrop(128, 256),
+    #         #     T.FixedResize([256,256]),
+    #         # ]),
+    #
+    #         # # zoom out to max 512x512
+    #         # T.Compose([
+    #         #             T.RandomPad(256),
+    #         #             T.RandomSizeCrop(200, 512),
+    #         #             T.FixedResize([256,256]),
+    #         #         ]),
+    #         normalize,
+    #     ])
+    #
+    # if image_set == 'val' or image_set == 'test': # always use 256x256 image so no aug required
+    #     return T.Compose([
+    #         T.RandomResize([256], max_size=1333),
+    #         normalize,
+    #     ])
     #############################################################
 
     raise ValueError(f'unknown {image_set}')
