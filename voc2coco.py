@@ -177,7 +177,8 @@ if __name__ == "__main__":
     assert split in ["train", "val", "test"]
 
     data_dir = './data'
-    # ds = datasets.VOCDetection(data_dir, year="2007", image_set=split, download=True)
+    ds = datasets.VOCDetection(data_dir, year="2007", image_set="train", download=True)
+    ds = datasets.VOCDetection(data_dir, year="2007", image_set="test", download=True)
 
     xml_files = glob.glob(os.path.join(xml_dir, "*.xml"))
 
