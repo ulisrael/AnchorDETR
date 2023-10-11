@@ -10,16 +10,16 @@ import torch.nn.functional as F
 
 from typing import List
 
-from models.transformer import build_transformer
-from models.matcher import build_matcher
-from models.anchor_detr import SetCriterion, PostProcess
+from AnchorDETR.models.transformer import build_transformer
+from AnchorDETR.models.matcher import build_matcher
+from AnchorDETR.models.anchor_detr import SetCriterion, PostProcess
 
 ## Debug imports
 # from transformers import DetrImageProcessor
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
-import util.misc as utils
-from util.misc import nested_tensor_from_tensor_list, NestedTensor
+import AnchorDETR.util.misc as utils
+from AnchorDETR.util.misc import nested_tensor_from_tensor_list, NestedTensor
 
 
 
@@ -270,7 +270,7 @@ class SAMAnchorDETR(nn.Module):
             nn.init.xavier_uniform_(proj[0].weight, gain=1)
             nn.init.constant_(proj[0].bias, 0)
 
-    def forward(self, feats: List[List]):
+    def forward(self, samples):
         """ The forward expects a NestedTensor, which consists of:
                - samples.tensor: batched images, of shape [batch_size x 3 x H x W]
                - samples.mask: a binary mask of shape [batch_size x H x W], containing 1 on padded pixels
@@ -288,8 +288,8 @@ class SAMAnchorDETR(nn.Module):
 
         srcs = []
         masks = []
-        for l, feat in enumerate(feats):
-            src, mask = feat[0], feat[1]
+        for l, feat in enumerate(samples):
+            src, mask = feat.decompose()
             srcs.append(self.input_proj[l](src).unsqueeze(1))
             masks.append(mask)
             assert mask is not None
