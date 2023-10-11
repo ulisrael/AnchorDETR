@@ -12,7 +12,7 @@ from typing import List
 
 from AnchorDETR.models.transformer import build_transformer
 from AnchorDETR.models.matcher import build_matcher
-from AnchorDETR.models.anchor_detr import SetCriterion, PostProcess
+from AnchorDETR.models.anchor_detr import SetCriterion, PostProcess, AnchorDETR
 
 ## Debug imports
 # from transformers import DetrImageProcessor
@@ -325,7 +325,7 @@ class SAMAnchorDETR(nn.Module):
                 for a, b in zip(outputs_class[:-1], outputs_coord[:-1])]
 
 
-def build_samanchor(args):
+def build_samanchor(args, backbone):
     # the `num_classes` naming here is somewhat misleading.
     # it indeed corresponds to `max_obj_id + 1`, where max_obj_id
     # is the maximum id for a class in your dataset. For example,
@@ -346,11 +346,17 @@ def build_samanchor(args):
 
     transformer = build_transformer(args)
 
-    model = SAMAnchorDETR(
+    # model = SAMAnchorDETR(
+    #     transformer,
+    #     num_feature_levels=1,
+    #     aux_loss=True,
+    #     # in_channels=args.in_channels,
+    # )
+    model = AnchorDETR(
+        backbone,
         transformer,
-        num_feature_levels=1,
-        aux_loss=True,
-        # in_channels=args.in_channels,
+        num_feature_levels=args.num_feature_levels,
+        aux_loss=args.aux_loss
     )
 
     matcher = build_matcher(args)
