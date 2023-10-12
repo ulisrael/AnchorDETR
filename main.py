@@ -23,7 +23,7 @@ import util.misc as utils
 import datasets.samplers as samplers
 from datasets import build_dataset, get_coco_api_from_dataset
 from engine import evaluate, train_one_epoch
-# from models import build_model
+from models import build_model
 
 # evaluation figure drawing
 import matplotlib.pyplot as plt
@@ -169,15 +169,16 @@ def main(args):
 
     run_name = args.wandb_run_name
 
-    wandb.init(project='anchor_detr', entity='allcell', name=run_name)
+    wandb.init(project='anchor_detr', entity='allcell', name=run_name, mode='dryrun')
 
     # define backbone
-    from models.backbone import build_backbone
-    backbone = build_backbone(args)
-
-    from anchor_testing import build_samanchor, TestAnchorDETR
-    sam_model, criterion, postprocessors = build_samanchor(args)
-    model = TestAnchorDETR(backbone, sam_model)
+    # from models.backbone import build_backbone
+    # backbone = build_backbone(args)
+    #
+    # from anchor_testing import build_samanchor, TestAnchorDETR
+    # sam_model, criterion, postprocessors = build_samanchor(args)
+    # model = TestAnchorDETR(backbone, sam_model)
+    model, criterion, postprocessors = build_model(args)
     model.to(device)
 
     model_without_ddp = model
