@@ -148,13 +148,14 @@ class SAMBackbone(SAMBackboneBase):
                  train_backbone: bool,
                  return_interm_layers: bool = False,
                  dilation: bool = False,
-                 only_neck: bool = False):
+                 only_neck: bool = False,
+                 freeze_backbone: bool = False):
 
         backbone = sam_model_registry["vit_b"](
             checkpoint="pretrained_models/sam_vit_b_01ec64.pth"
         )
         backbone = backbone.image_encoder
-        super().__init__(backbone, train_backbone, return_interm_layers, only_neck)
+        super().__init__(backbone, train_backbone, return_interm_layers, only_neck, freeze_backbone)
         if dilation: #TODO: check if applicable here
             self.strides[-1] = self.strides[-1] // 2
 
