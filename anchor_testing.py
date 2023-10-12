@@ -285,7 +285,7 @@ class SAMAnchorDETR(nn.Module):
                - "aux_outputs": Optional, only returned when auxilary losses are activated. It is a list of
                                 dictionnaries containing the two above keys for each decoder layer.
         """
-
+        print('d')
         srcs = []
         masks = []
         for l, feat in enumerate(feats):
