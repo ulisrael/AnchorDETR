@@ -19,8 +19,8 @@ import torch.utils.data
 from pycocotools import mask as coco_mask
 
 from .torchvision_datasets import CocoDetection as TvCocoDetection
-from util.misc import get_local_rank, get_local_size
-import datasets.transforms as T
+from AnchorDETR.util.misc import get_local_rank, get_local_size
+import AnchorDETR.datasets.transforms as T
 
 
 class CocoDetection(TvCocoDetection):
