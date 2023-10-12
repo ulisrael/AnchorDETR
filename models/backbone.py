@@ -110,12 +110,18 @@ class Backbone(BackboneBase):
 
 class SAMBackboneBase(nn.Module):
 
-    def __init__(self, backbone: nn.Module, train_backbone: bool, return_interm_layers: bool):
+    def __init__(self, backbone: nn.Module, train_backbone: bool, return_interm_layers: bool, only_neck: bool):
         super().__init__()
         #TODO: adjust later for SAM
         # for name, parameter in backbone.named_parameters(): #TODO: adjust later for SAM
         #     if not train_backbone or 'layer2' not in name and 'layer3' not in name and 'layer4' not in name:
         #         parameter.requires_grad_(False)
+        if only_neck:
+            for name, parameter in backbone.named_parameters():
+                if "neck" in name:
+                    parameter.requires_grad_(True)
+                else:
+                    parameter.requires_grad_(False)
         if return_interm_layers:
             raise NotImplementedError
         else:
@@ -138,13 +144,14 @@ class SAMBackbone(SAMBackboneBase):
     def __init__(self, name: str,
                  train_backbone: bool,
                  return_interm_layers: bool = False,
-                 dilation: bool = False):
+                 dilation: bool = False,
+                 only_neck: bool = False):
 
         backbone = sam_model_registry["vit_b"](
             checkpoint="pretrained_models/sam_vit_b_01ec64.pth"
         )
         backbone = backbone.image_encoder
-        super().__init__(backbone, train_backbone, return_interm_layers)
+        super().__init__(backbone, train_backbone, return_interm_layers, only_neck)
         if dilation: #TODO: check if applicable here
             self.strides[-1] = self.strides[-1] // 2
 
@@ -153,7 +160,7 @@ def build_backbone(args):
     train_backbone = args.lr_backbone > 0
     return_interm_layers = args.masks or (args.num_feature_levels > 1)
     if args.backbone == "SAM":
-        backbone = SAMBackbone(args.backbone, train_backbone, return_interm_layers, args.dilation)
+        backbone = SAMBackbone(args.backbone, train_backbone, return_interm_layers, args.dilation, args.only_neck)
     else:
         backbone = Backbone(args.backbone, train_backbone, return_interm_layers, args.dilation)
     return backbone
