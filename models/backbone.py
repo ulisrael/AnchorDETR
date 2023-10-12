@@ -19,6 +19,7 @@ from torch import nn
 from torchvision.models._utils import IntermediateLayerGetter
 from typing import Dict, List
 
+from segment_anything.segment_anything import sam_model_registry
 from util.misc import NestedTensor, is_main_process
 
 
@@ -92,6 +93,7 @@ class BackboneBase(nn.Module):
 
 class Backbone(BackboneBase):
     """ResNet backbone with frozen BatchNorm."""
+
     def __init__(self, name: str,
                  train_backbone: bool,
                  return_interm_layers: bool,
@@ -106,8 +108,52 @@ class Backbone(BackboneBase):
             self.strides[-1] = self.strides[-1] // 2
 
 
+class SAMBackboneBase(nn.Module):
+
+    def __init__(self, backbone: nn.Module, train_backbone: bool, return_interm_layers: bool):
+        super().__init__()
+        #TODO: adjust later for SAM
+        # for name, parameter in backbone.named_parameters(): #TODO: adjust later for SAM
+        #     if not train_backbone or 'layer2' not in name and 'layer3' not in name and 'layer4' not in name:
+        #         parameter.requires_grad_(False)
+        if return_interm_layers:
+            raise NotImplementedError
+        else:
+            return_layers = {'neck': "0"}
+            self.strides = [4]  # TODO: just changed, see if it makes sense
+            self.num_channels = [256]
+        self.body = backbone
+
+    def forward(self, tensor_list: NestedTensor):
+        x = self.body(tensor_list.tensors)
+        m = tensor_list.mask
+        assert m is not None
+        mask = F.interpolate(m[None].float(), size=x.shape[-2:]).to(torch.bool)[0]
+        out = NestedTensor(x, mask)
+        return [out]
+
+
+class SAMBackbone(SAMBackboneBase):
+
+    def __init__(self, name: str,
+                 train_backbone: bool,
+                 return_interm_layers: bool = False,
+                 dilation: bool = False):
+
+        backbone = sam_model_registry["vit_b"](
+            checkpoint="pretrained_models/sam_vit_b_01ec64.pth"
+        )
+        backbone = backbone.image_encoder
+        super().__init__(backbone, train_backbone, return_interm_layers)
+        if dilation: #TODO: check if applicable here
+            self.strides[-1] = self.strides[-1] // 2
+
+
 def build_backbone(args):
     train_backbone = args.lr_backbone > 0
     return_interm_layers = args.masks or (args.num_feature_levels > 1)
-    backbone = Backbone(args.backbone, train_backbone, return_interm_layers, args.dilation)
+    if args.backbone == "SAM":
+        backbone = SAMBackbone(args.backbone, train_backbone, return_interm_layers, args.dilation)
+    else:
+        backbone = Backbone(args.backbone, train_backbone, return_interm_layers, args.dilation)
     return backbone
