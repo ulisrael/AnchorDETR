@@ -17,8 +17,8 @@ import torch
 import torchvision.transforms as T
 import torchvision.transforms.functional as F
 
-from util.box_ops import box_xyxy_to_cxcywh
-from util.misc import interpolate
+from AnchorDETR.util.box_ops import box_xyxy_to_cxcywh
+from AnchorDETR.util.misc import interpolate
 
 
 def crop(image, target, region):
