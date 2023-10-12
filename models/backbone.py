@@ -110,12 +110,15 @@ class Backbone(BackboneBase):
 
 class SAMBackboneBase(nn.Module):
 
-    def __init__(self, backbone: nn.Module, train_backbone: bool, return_interm_layers: bool, only_neck: bool):
+    def __init__(self, backbone: nn.Module, train_backbone: bool, return_interm_layers: bool, only_neck: bool, freeze_backbone: bool = False):
         super().__init__()
         #TODO: adjust later for SAM
         # for name, parameter in backbone.named_parameters(): #TODO: adjust later for SAM
         #     if not train_backbone or 'layer2' not in name and 'layer3' not in name and 'layer4' not in name:
         #         parameter.requires_grad_(False)
+        if freeze_backbone:
+            for name, parameter in backbone.named_parameters():
+                parameter.requires_grad_(False)
         if only_neck:
             for name, parameter in backbone.named_parameters():
                 if "neck" in name:
@@ -160,7 +163,7 @@ def build_backbone(args):
     train_backbone = args.lr_backbone > 0
     return_interm_layers = args.masks or (args.num_feature_levels > 1)
     if args.backbone == "SAM":
-        backbone = SAMBackbone(args.backbone, train_backbone, return_interm_layers, args.dilation, args.only_neck)
+        backbone = SAMBackbone(args.backbone, train_backbone, return_interm_layers, args.dilation, args.only_neck, args.freeze_backbone)
     else:
         backbone = Backbone(args.backbone, train_backbone, return_interm_layers, args.dilation)
     return backbone
