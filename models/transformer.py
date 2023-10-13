@@ -15,10 +15,10 @@ import torch
 import torch.nn.functional as F
 from torch import nn, Tensor
 
-from util.misc import inverse_sigmoid
+from AnchorDETR.util.misc import inverse_sigmoid
 
 
-from models.row_column_decoupled_attention import MultiheadRCDA
+from AnchorDETR.models.row_column_decoupled_attention import MultiheadRCDA
 
 class Transformer(nn.Module):
     def __init__(self, num_classes=91, d_model=256, nhead=8,

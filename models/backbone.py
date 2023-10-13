@@ -20,7 +20,7 @@ from torchvision.models._utils import IntermediateLayerGetter
 from typing import Dict, List
 
 from segment_anything.segment_anything import sam_model_registry
-from util.misc import NestedTensor, is_main_process
+from AnchorDETR.util.misc import NestedTensor, is_main_process
 
 
 class FrozenBatchNorm2d(torch.nn.Module):
