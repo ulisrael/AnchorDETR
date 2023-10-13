@@ -1,4 +1,4 @@
-python main.py --backbone SAM \
+python main.py --backbone SAM --num_classes 2 \
 --device_num 2 \
 --num_query_position 50 \
 --batch_size 4 \
