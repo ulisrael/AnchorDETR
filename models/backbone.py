@@ -110,9 +110,10 @@ class Backbone(BackboneBase):
 
 class SAMBackboneBase(nn.Module):
 
-    def __init__(self, backbone: nn.Module, train_backbone: bool, return_interm_layers: bool, only_neck: bool, freeze_backbone: bool = False):
+    def __init__(self, backbone: nn.Module, train_backbone: bool, return_interm_layers: bool, only_neck: bool,
+                 freeze_backbone: bool = False):
         super().__init__()
-        #TODO: adjust later for SAM
+        # TODO: adjust later for SAM
         # for name, parameter in backbone.named_parameters(): #TODO: adjust later for SAM
         #     if not train_backbone or 'layer2' not in name and 'layer3' not in name and 'layer4' not in name:
         #         parameter.requires_grad_(False)
@@ -128,9 +129,9 @@ class SAMBackboneBase(nn.Module):
         if return_interm_layers:
             raise NotImplementedError
         else:
-            return_layers = {'neck': "0"}
+            return_layers = {'blocks': "0"}
             self.strides = [4]  # TODO: just changed, see if it makes sense
-            self.num_channels = [256]
+            self.num_channels = [768]
         self.body = backbone
 
     def forward(self, tensor_list: NestedTensor):
@@ -142,6 +143,25 @@ class SAMBackboneBase(nn.Module):
         return [out]
 
 
+class ModifiedImageEncoderViT(nn.Module):
+    def __init__(self, original_model):
+        super(ModifiedImageEncoderViT, self).__init__()
+
+        # Extract all layers up to but not including 'neck'
+        self.patch_embed = original_model.patch_embed
+        self.blocks = original_model.blocks
+
+    def forward(self, x):
+        # Apply patch embedding
+        x = self.patch_embed(x)
+
+        # Pass through blocks
+        for block in self.blocks:
+            x = block(x)
+
+        return x.permute(0, 3, 1, 2)
+
+
 class SAMBackbone(SAMBackboneBase):
 
     def __init__(self, name: str,
@@ -150,13 +170,13 @@ class SAMBackbone(SAMBackboneBase):
                  dilation: bool = False,
                  only_neck: bool = False,
                  freeze_backbone: bool = False):
-
         backbone = sam_model_registry["vit_b"](
             checkpoint="pretrained_models/sam_vit_b_01ec64.pth"
         )
         backbone = backbone.image_encoder
+        backbone = ModifiedImageEncoderViT(backbone)
         super().__init__(backbone, train_backbone, return_interm_layers, only_neck, freeze_backbone)
-        if dilation: #TODO: check if applicable here
+        if dilation:  # TODO: check if applicable here
             self.strides[-1] = self.strides[-1] // 2
 
 
@@ -164,7 +184,8 @@ def build_backbone(args):
     train_backbone = args.lr_backbone > 0
     return_interm_layers = args.masks or (args.num_feature_levels > 1)
     if args.backbone == "SAM":
-        backbone = SAMBackbone(args.backbone, train_backbone, return_interm_layers, args.dilation, args.only_neck, args.freeze_backbone)
+        backbone = SAMBackbone(args.backbone, train_backbone, return_interm_layers, args.dilation, args.only_neck,
+                               args.freeze_backbone)
     else:
         backbone = Backbone(args.backbone, train_backbone, return_interm_layers, args.dilation)
     return backbone
