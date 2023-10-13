@@ -223,9 +223,9 @@ def build(image_set, args):
 
     # voc2007 paths
     PATHS = {
-        "train": (root / "train", root / "annotations" / f'train_new.json'),
-        "val": (root / "val", root / "annotations" / f'val_new.json'),
-        "test": (root / "test2017", root / "annotations" / 'image_info_test-dev2017.json'),
+        "train": (root / args.train_path, root / args.json_root / args.train_json),
+        "val": (root / args.val_path, root / args.json_root / args.val_json),
+        "test": (root / args.test_path, root / args.json_root / args.test_json),
     }
 
     # omnipose paths

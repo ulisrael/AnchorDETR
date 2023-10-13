@@ -141,6 +141,17 @@ def get_args_parser():
     parser.add_argument('--only_neck', action='store_true', help='whether to train only neck')
     parser.add_argument('--freeze_backbone', action='store_true', help='whether to train only backbone')
 
+    #paths
+    parser.add_argument('--train_path', default='train', type=str)
+    parser.add_argument('--val_path', default='val', type=str)
+    parser.add_argument('--test_path', default='test', type=str)
+
+    # json root
+    parser.add_argument('--json_root', default='annotations', type=str)
+    parser.add_argument('--train_json', default='train.json', type=str)
+    parser.add_argument('--val_json', default='val.json', type=str)
+    parser.add_argument('--test_json', default='test.json', type=str)
+
     return parser
 
 
