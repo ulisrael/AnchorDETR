@@ -87,7 +87,8 @@ class AnchorDETR(nn.Module):
                - "aux_outputs": Optional, only returned when auxilary losses are activated. It is a list of
                                 dictionnaries containing the two above keys for each decoder layer.
         """
-        if not isinstance(samples, NestedTensor):
+        # if not isinstance(samples, NestedTensor):
+        if not 'NestedTensor' in str(type(samples)):
             samples = nested_tensor_from_tensor_list(samples)
         features = self.backbone(samples)
 
