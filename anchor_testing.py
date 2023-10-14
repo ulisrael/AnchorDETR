@@ -10,16 +10,16 @@ import torch.nn.functional as F
 
 from typing import List
 
-from models.transformer import build_transformer
-from models.matcher import build_matcher
-from models.anchor_detr import SetCriterion, PostProcess
+from AnchorDETR.models.transformer import build_transformer
+from AnchorDETR.models.matcher import build_matcher
+from AnchorDETR.models.anchor_detr import SetCriterion, PostProcess
 
 ## Debug imports
 # from transformers import DetrImageProcessor
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
-import util.misc as utils
-from util.misc import nested_tensor_from_tensor_list, NestedTensor
+import AnchorDETR.util.misc as utils
+from AnchorDETR.util.misc import nested_tensor_from_tensor_list, NestedTensor
 
 
 
