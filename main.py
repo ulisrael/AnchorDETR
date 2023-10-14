@@ -132,6 +132,10 @@ def get_args_parser():
     ## NEW ARG to limit number of evals
     parser.add_argument('--eval_checkpoint_period', default=5, type=int,
                         help="Evaluation and checkpoint period by epoch, defalut is per 10 epochs")
+
+    parser.add_argument('--eval_model_period', default=5, type=int,
+                        help="Evaluation period by epoch")
+
     parser.add_argument('--num_classes', default=21, type=int,
                         help="corresponds to `max_obj_id + 1`, where max_obj_id is the maximum id for a class in your dataset.")
     parser.add_argument('--device_num', default=0, type=int, help='device number')
@@ -367,7 +371,7 @@ def main(args):
                     'args': args,
                 }, checkpoint_path)
 
-        if (epoch + 1) % args.eval_checkpoint_period == 0:  # per args.eval_checkpoint_period epoch log
+        if (epoch + 1) % args.eval_model_period == 0:  # per args.eval_checkpoint_period epoch log
             test_stats, coco_evaluator = evaluate(
                 model, criterion, postprocessors, data_loader_val, base_ds, device, args.output_dir
             )
