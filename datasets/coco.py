@@ -131,9 +131,11 @@ def make_coco_transforms(image_set):
     # ])
     SAM_MEAN = [123.675, 116.28, 103.53]
     SAM_STD = [58.395, 57.12, 57.375]
+
     normalize = T.Compose([
         T.ToTensor(),
-        T.Normalize(SAM_MEAN, SAM_STD)
+        # T.Normalize(SAM_MEAN, SAM_STD),
+        T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
 
 
