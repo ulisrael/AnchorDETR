@@ -132,6 +132,10 @@ def get_args_parser():
     ## NEW ARG to limit number of evals
     parser.add_argument('--eval_checkpoint_period', default=5, type=int,
                         help="Evaluation and checkpoint period by epoch, defalut is per 10 epochs")
+
+    parser.add_argument('--eval_model_period', default=5, type=int,
+                        help="Evaluation period by epoch")
+
     parser.add_argument('--num_classes', default=21, type=int,
                         help="corresponds to `max_obj_id + 1`, where max_obj_id is the maximum id for a class in your dataset.")
     parser.add_argument('--device_num', default=0, type=int, help='device number')
@@ -367,81 +371,84 @@ def main(args):
                     'args': args,
                 }, checkpoint_path)
 
-        if (epoch + 1) % args.eval_checkpoint_period == 0:  # per args.eval_checkpoint_period epoch log
+                # Get sample validation data
+                sample_in, sample_tgts = next(iter(data_loader_val))
+
+                # Draw boxes and original image
+                # data_dir = './data/coco/val/'
+                image_id = int(sample_tgts[0]['image_id'])
+                orig_image_path = dataset_val.coco.loadImgs(image_id)[0]
+                # orig_image = Image.open(os.path.join(str(data_loader_val.dataset.root), orig_image_path['file_name'])) # err for tiff
+                np_img = imread(os.path.join(str(data_loader_val.dataset.root), orig_image_path['file_name'])).astype(
+                    np.float32)
+                uint8_img = (np_img / (np_img.max() + 1e-5) * 255.0).astype('uint8')
+                orig_image = Image.fromarray(uint8_img, 'RGB')
+                draw = ImageDraw.Draw(orig_image, "RGBA")
+
+                # get annotations and labels
+                annotations = dataset_val.coco.imgToAnns[image_id]
+                cats = dataset_val.coco.cats
+                id2label = {k: v['name'] for k, v in cats.items()}
+
+                for annotation in annotations:
+                    box = annotation['bbox']
+                    class_idx = int(annotation['category_id'])
+                    x, y, w, h = tuple(box)
+                    draw.rectangle((x, y, x + w, y + h), outline='red', width=1)
+                    # draw.text((x, y), id2label[class_idx], fill='white')
+
+                fig, ax = plt.subplots(1, 2, figsize=(10, 5))
+
+                ax[0].imshow(orig_image)
+                ax[0].set_title('original image')
+                ax[0].set_xticks([])
+                ax[0].set_yticks([])
+
+                # Get model outputs
+                with torch.no_grad():
+                    model.to(device)
+                    model.eval()
+                    sample_out = model(sample_in.to(device))
+                    orig_target_sizes = torch.stack([t["size"] for t in sample_tgts], dim=0)
+                    results = postprocessors['bbox'](sample_out, orig_target_sizes.to(device))
+
+                ## Draw boxes and processed image
+                proc_img, _ = sample_in.decompose()
+                rescaled_img = (proc_img[0] - proc_img[0].min()) / (proc_img[0].max() - proc_img[0].min())
+                image = T.ToPILImage()(rescaled_img)
+                draw = ImageDraw.Draw(image, "RGBA")
+
+                max_score = 0
+                for i in range(len(results[0]['boxes'])):
+                    box = results[0]['boxes'][i]
+                    score = results[0]['scores'][i]
+                    class_idx = int(results[0]['labels'][i]) - 1
+
+                    max_score = max(max_score, score.max())
+
+                    if score > 0.4:
+                        x_min, y_min, x_max, y_max = tuple(box)
+                        draw.rectangle((x_min, y_min, x_max, y_max), outline='red', width=1)
+                        # draw.text((x_min, y_min), id2label[class_idx], fill='white')
+
+                ax[1].imshow(image)
+                ax[1].set_title('Predictions image')
+                ax[1].set_xticks([])
+                ax[1].set_yticks([])
+                fig.tight_layout()
+                # save figure
+                fig.savefig(os.path.join(args.output_dir, f'sample_val_fig_epoch_{epoch}.png'))
+
+                wandb.log({'sample_val_fig': wandb.Image(fig)})
+
+                print()
+                print(f'max box scsore for this round is {max_score:04}')
+                print()
+
+        if (epoch + 1) % args.eval_model_period == 0:  # per args.eval_checkpoint_period epoch log
             test_stats, coco_evaluator = evaluate(
                 model, criterion, postprocessors, data_loader_val, base_ds, device, args.output_dir
             )
-
-            # Get sample validation data
-            sample_in, sample_tgts = next(iter(data_loader_val))
-
-            # Draw boxes and original image
-            # data_dir = './data/coco/val/'
-            image_id = int(sample_tgts[0]['image_id'])
-            orig_image_path = dataset_val.coco.loadImgs(image_id)[0]
-            # orig_image = Image.open(os.path.join(str(data_loader_val.dataset.root), orig_image_path['file_name'])) # err for tiff
-            np_img = imread(os.path.join(str(data_loader_val.dataset.root), orig_image_path['file_name'])).astype(np.float32)
-            uint8_img = (np_img/(np_img.max()+1e-5)*255.0).astype('uint8')
-            orig_image = Image.fromarray(uint8_img, 'RGB')
-            draw = ImageDraw.Draw(orig_image, "RGBA")
-
-            # get annotations and labels
-            annotations = dataset_val.coco.imgToAnns[image_id]
-            cats = dataset_val.coco.cats
-            id2label = {k: v['name'] for k, v in cats.items()}
-
-            for annotation in annotations:
-                box = annotation['bbox']
-                class_idx = int(annotation['category_id'])
-                x, y, w, h = tuple(box)
-                draw.rectangle((x, y, x + w, y + h), outline='red', width=1)
-                # draw.text((x, y), id2label[class_idx], fill='white')
-
-            fig, ax = plt.subplots(1, 2, figsize=(10, 5))
-
-            ax[0].imshow(orig_image)
-            ax[0].set_xticks([])
-            ax[0].set_yticks([])
-
-            # Get model outputs
-            with torch.no_grad():
-                model.to(device)
-                model.eval()
-                sample_out = model(sample_in.to(device))
-                orig_target_sizes = torch.stack([t["size"] for t in sample_tgts], dim=0)
-                results = postprocessors['bbox'](sample_out, orig_target_sizes.to(device))
-
-            ## Draw boxes and processed image
-            proc_img, _ = sample_in.decompose()
-            rescaled_img = (proc_img[0]-proc_img[0].min())/(proc_img[0].max()-proc_img[0].min())
-            image = T.ToPILImage()(rescaled_img)
-            draw = ImageDraw.Draw(image, "RGBA")
-
-            max_score = 0
-            for i in range(len(results[0]['boxes'])):
-                box = results[0]['boxes'][i]
-                score = results[0]['scores'][i]
-                class_idx = int(results[0]['labels'][i]) - 1
-
-                max_score = max(max_score, score.max())
-
-                if score > 0.4:
-                    x_min, y_min, x_max, y_max = tuple(box)
-                    draw.rectangle((x_min, y_min, x_max, y_max), outline='red', width=1)
-                    # draw.text((x_min, y_min), id2label[class_idx], fill='white')
-
-            ax[1].imshow(image)
-            ax[1].set_xticks([])
-            ax[1].set_yticks([])
-            fig.tight_layout()
-            # save figure
-            fig.savefig(os.path.join(args.output_dir, f'sample_val_fig_epoch_{epoch}.png'))
-
-            wandb.log({'sample_val_fig': wandb.Image(fig)})
-
-            print()
-            print(f'max box scsore for this round is {max_score:04}')
-            print()
 
             log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
                          **{f'test_{k}': v for k, v in test_stats.items()},

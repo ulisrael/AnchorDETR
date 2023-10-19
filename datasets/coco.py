@@ -125,10 +125,20 @@ class ConvertCocoPolysToMask(object):
 def make_coco_transforms(image_set):
     # #############################################################
     # # coco augments
+    # normalize = T.Compose([
+    #     T.ToTensor(),
+    #     T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    # ])
+    SAM_MEAN = [123.675, 116.28, 103.53]
+    SAM_STD = [58.395, 57.12, 57.375]
+
     normalize = T.Compose([
         T.ToTensor(),
+        # T.Normalize(SAM_MEAN, SAM_STD),
         T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
+
+
 
     scales = [480, 512, 544, 576, 608, 640, 672, 704, 736, 768, 800]
 
