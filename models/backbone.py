@@ -170,7 +170,7 @@ class SAMBackbone(SAMBackboneBase):
                  dilation: bool = False,
                  only_neck: bool = False,
                  freeze_backbone: bool = False):
-        backbone = sam_model_registry["vit_b"](
+        backbone = sam_model_registry["vit_h"](
             checkpoint="AnchorDETR/pretrained_models/sam_vit_h_4b8939.pth"
         )
         backbone = backbone.image_encoder
