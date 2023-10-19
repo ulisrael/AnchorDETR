@@ -111,7 +111,7 @@ class Backbone(BackboneBase):
 class SAMBackboneBase(nn.Module):
 
     def __init__(self, backbone: nn.Module, train_backbone: bool, return_interm_layers: bool, only_neck: bool,
-                 freeze_backbone: bool = False):
+                 freeze_backbone: bool = False, sam_vit: str = "vit_h"):
         super().__init__()
         # TODO: adjust later for SAM
         # for name, parameter in backbone.named_parameters(): #TODO: adjust later for SAM
@@ -131,7 +131,12 @@ class SAMBackboneBase(nn.Module):
         else:
             return_layers = {'blocks': "0"}
             self.strides = [4]  # TODO: just changed, see if it makes sense
-            self.num_channels = [768]
+            if sam_vit == "vit_h":
+                self.num_channels = [1280]
+            elif sam_vit == "vit_b":
+                self.num_channels = [768]
+            else:
+                raise NotImplementedError
         self.body = backbone
 
     def forward(self, tensor_list: NestedTensor):
@@ -170,12 +175,16 @@ class SAMBackbone(SAMBackboneBase):
                  dilation: bool = False,
                  only_neck: bool = False,
                  freeze_backbone: bool = False):
-        backbone = sam_model_registry["vit_h"](
-            checkpoint="AnchorDETR/pretrained_models/sam_vit_h_4b8939.pth"
+        sam_vit = "vit_h"
+        path = "AnchorDETR/pretrained_models/sam_vit_h_4b8939.pth"
+        if sam_vit == "vit_b":
+            path = "AnchorDETR/pretrained_models/sam_vit_b_01ec64.pth"
+        backbone = sam_model_registry[sam_vit](
+            checkpoint=path
         )
         backbone = backbone.image_encoder
         backbone = ModifiedImageEncoderViT(backbone)
-        super().__init__(backbone, train_backbone, return_interm_layers, only_neck, freeze_backbone)
+        super().__init__(backbone, train_backbone, return_interm_layers, only_neck, freeze_backbone, sam_vit)
         if dilation:  # TODO: check if applicable here
             self.strides[-1] = self.strides[-1] // 2
 
