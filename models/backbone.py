@@ -171,7 +171,7 @@ class SAMBackbone(SAMBackboneBase):
                  only_neck: bool = False,
                  freeze_backbone: bool = False):
         backbone = sam_model_registry["vit_b"](
-            checkpoint="pretrained_models/sam_vit_b_01ec64.pth"
+            checkpoint="AnchorDETR/pretrained_models/sam_vit_h_4b8939.pth"
         )
         backbone = backbone.image_encoder
         backbone = ModifiedImageEncoderViT(backbone)
