@@ -174,8 +174,8 @@ class SAMBackbone(SAMBackboneBase):
                  return_interm_layers: bool = False,
                  dilation: bool = False,
                  only_neck: bool = False,
-                 freeze_backbone: bool = False):
-        sam_vit = "vit_h"
+                 freeze_backbone: bool = False,
+                 sam_vit: str = "vit_h"):
         path = "AnchorDETR/pretrained_models/sam_vit_h_4b8939.pth"
         if sam_vit == "vit_b":
             path = "AnchorDETR/pretrained_models/sam_vit_b_01ec64.pth"
@@ -194,7 +194,7 @@ def build_backbone(args):
     return_interm_layers = args.masks or (args.num_feature_levels > 1)
     if args.backbone == "SAM":
         backbone = SAMBackbone(args.backbone, train_backbone, return_interm_layers, args.dilation, args.only_neck,
-                               args.freeze_backbone)
+                               args.freeze_backbone, args.sam_vit)
     else:
         backbone = Backbone(args.backbone, train_backbone, return_interm_layers, args.dilation)
     return backbone

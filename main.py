@@ -144,6 +144,7 @@ def get_args_parser():
 
     parser.add_argument('--only_neck', action='store_true', help='whether to train only neck')
     parser.add_argument('--freeze_backbone', action='store_true', help='whether to train only backbone')
+    parser.add_argument('--sam_vit', default='vit_b', type=str, help='which sam_vit to use')
 
     #paths
     parser.add_argument('--train_path', default='train', type=str)
