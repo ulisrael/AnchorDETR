@@ -148,9 +148,9 @@ def make_coco_transforms(image_set):
             T.RandomSelect(
                 T.RandomResize(scales, max_size=1333),
                 T.Compose([
-                    T.RandomResize([400, 500, 600]),
-                    T.RandomSizeCrop(384, 600),
-                    T.RandomResize(scales, max_size=1333),
+                    T.RandomResize([400*2, 500*2, 600*2]),
+                    T.RandomSizeCrop(384*2, 600*2),
+                    # T.RandomResize(scales, max_size=1333),
                 ])
             ),
             #Resize everything to 1024 for SAM testing, #TODO: remove me later?
@@ -160,7 +160,7 @@ def make_coco_transforms(image_set):
 
     if image_set == 'val' or image_set == 'test':
         return T.Compose([
-            T.RandomResize([800], max_size=1333),
+            # T.RandomResize([800], max_size=1333),
             #Resize everything to 1024 for SAM testing
             T.FixedResize([1024,1024]),
             normalize,
