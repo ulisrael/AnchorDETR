@@ -154,7 +154,7 @@ def make_coco_transforms(image_set):
                 ])
             ),
             #Resize everything to 1024 for SAM testing, #TODO: remove me later?
-            T.FixedResize([1024,1024]),
+            T.FixedResize([1024, 1024]),
             normalize,
         ])
 
