@@ -20,7 +20,8 @@ import copy
 import numpy as np
 import torch
 
-from pycocotools.cocoeval import COCOeval
+# from pycocotools.cocoeval import COCOeval
+from .COCOevalMaxDets import COCOevalMaxDets
 from pycocotools.coco import COCO
 import pycocotools.mask as mask_util
 
@@ -28,7 +29,7 @@ from util.misc import all_gather
 
 
 class CocoEvaluator(object):
-    def __init__(self, coco_gt, iou_types, save_json=False):
+    def __init__(self, coco_gt, iou_types, maxDets = 10000, save_json=False):
         assert isinstance(iou_types, (list, tuple))
         coco_gt = copy.deepcopy(coco_gt)
         self.coco_gt = coco_gt
@@ -36,7 +37,9 @@ class CocoEvaluator(object):
         self.iou_types = iou_types
         self.coco_eval = {}
         for iou_type in iou_types:
-            self.coco_eval[iou_type] = COCOeval(coco_gt, iouType=iou_type)
+            self.coco_eval[iou_type] = COCOevalMaxDets(coco_gt, iouType=iou_type)
+            self.coco_eval[iou_type].params.maxDets = [1, 10, 100, maxDets]
+
 
         self.img_ids = []
         self.eval_imgs = {k: [] for k in iou_types}
