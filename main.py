@@ -188,7 +188,7 @@ def main(args):
 
     run_name = args.wandb_run_name
 
-    wandb.init(project='anchor_detr', entity='allcell', name=run_name)
+    wandb.init(project='anchor_detr_new', entity='allcell', name=run_name)
 
     # define backbone
     # from models.backbone import build_backbone
