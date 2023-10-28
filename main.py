@@ -442,6 +442,8 @@ def main(args):
 
                 wandb.log({'sample_val_fig': wandb.Image(fig)})
 
+                plt.close(fig)
+
                 print()
                 print(f'max box scsore for this round is {max_score:04}')
                 print()
