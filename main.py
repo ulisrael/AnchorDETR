@@ -438,7 +438,7 @@ def main(args):
                 ax[1].set_yticks([])
                 fig.tight_layout()
                 # save figure
-                fig.savefig(os.path.join(args.output_dir, f'sample_val_fig_epoch_{epoch}.png'))
+                # fig.savefig(os.path.join(args.output_dir, f'sample_val_fig_epoch_{epoch}.png'))
 
                 wandb.log({'sample_val_fig': wandb.Image(fig)})
 
