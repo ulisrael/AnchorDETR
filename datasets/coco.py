@@ -199,6 +199,28 @@ def make_coco_transforms(image_set, args):
             T.FixedResize([1024, 1024]),
             normalize,
         ])
+    elif args.additional_augmentations == 'qilin':
+        return T.Compose([
+            T.RandomHorizontalFlip(),
+            T.RandomSelect(
+                T.FixedResize([512, 512]),  # directly return 512x512 image
+                T.RandomSelect(
+                    # zoom in to max 256x256
+                    T.Compose([
+                        T.RandomSizeCrop(256, 512),
+                        T.FixedResize([512, 512]),
+                    ]),
+                    # zoom out to max 1024x1024
+                    T.Compose([
+                        T.RandomPad(512),
+                        T.RandomSizeCrop(400, 1024),
+                        T.FixedResize([512, 512]),
+                    ]), p=0.5
+                ), p=0.33
+            ),
+            T.FixedResize([1024, 1024]),
+            normalize,
+        ])
     else:
         raise ValueError(f'unknown {args.additional_augmentations}')
 
