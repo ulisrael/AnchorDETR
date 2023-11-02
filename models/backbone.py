@@ -179,6 +179,8 @@ class SAMBackbone(SAMBackboneBase):
         path = "AnchorDETR/pretrained_models/sam_vit_h_4b8939.pth"
         if sam_vit == "vit_b":
             path = "AnchorDETR/pretrained_models/sam_vit_b_01ec64.pth"
+        if sam_vit == "vit_l":
+            path = "AnchorDETR/pretrained_models/sam_vit_l_0b9c0a.pth"
         backbone = sam_model_registry[sam_vit](
             checkpoint=path
         )
