@@ -160,7 +160,7 @@ def get_args_parser():
 
     # for ablation purposes
     parser.add_argument('--delete_nuclear_channel', action='store_true', help='whether to delete nuclear channel')
-    parser.add_argument('--additional_augmentations', default="none", type=str, choices=['none','more_scales', 'random_crop_and_flip', 'qilin', 'combined'], help='whether to delete nuclear channel')
+    parser.add_argument('--additional_augmentations', default="none", type=str, choices=['none','more_scales', 'random_rotation_and_flip', 'qilin', 'combined'], help='whether to delete nuclear channel')
 
     return parser
 
