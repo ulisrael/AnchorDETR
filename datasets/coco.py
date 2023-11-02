@@ -24,11 +24,12 @@ import datasets.transforms as T
 
 
 class CocoDetection(TvCocoDetection):
-    def __init__(self, img_folder, ann_file, transforms, return_masks, cache_mode=False, local_rank=0, local_size=1):
+    def __init__(self, img_folder, ann_file, transforms, return_masks, cache_mode=False, local_rank=0, local_size=1, nuclear=False):
         super(CocoDetection, self).__init__(img_folder, ann_file,
                                             cache_mode=cache_mode, local_rank=local_rank, local_size=local_size)
         self._transforms = transforms
         self.prepare = ConvertCocoPolysToMask(return_masks)
+        self.nuclear = nuclear
 
     def __getitem__(self, idx):
         img, target = super(CocoDetection, self).__getitem__(idx)
@@ -37,6 +38,11 @@ class CocoDetection(TvCocoDetection):
         img, target = self.prepare(img, target)
         if self._transforms is not None:
             img, target = self._transforms(img, target)
+        if self.nuclear:
+            img = img[2,:,:]
+            img = img.unsqueeze(0)
+            # repeat
+            img = img.repeat(3,1,1)
         return img, target
 
 
@@ -122,7 +128,7 @@ class ConvertCocoPolysToMask(object):
         return image, target
 
 
-def make_coco_transforms(image_set):
+def make_coco_transforms(image_set, args):
     # #############################################################
     # # coco augments
     # normalize = T.Compose([
@@ -141,22 +147,39 @@ def make_coco_transforms(image_set):
 
 
     scales = [480, 512, 544, 576, 608, 640, 672, 704, 736, 768, 800]
+    more_scales = [280, 360, 480, 512, 544, 576, 608, 640, 672, 704, 736, 768, 800, 900, 1000, 1100, 1200]
 
-    if image_set == 'train':
-        return T.Compose([
-            T.RandomHorizontalFlip(),
-            T.RandomSelect(
-                T.RandomResize(scales, max_size=1333),
-                T.Compose([
-                    T.RandomResize([400, 500, 600]),
-                    T.RandomSizeCrop(384, 600),
-                    # T.RandomResize(scales, max_size=1333),
-                ])
-            ),
-            #Resize everything to 1024 for SAM testing, #TODO: remove me later?
-            T.FixedResize([1024, 1024]),
-            normalize,
-        ])
+    if args.coco_transforms_all_scales:
+        if image_set == 'train':
+            return T.Compose([
+                T.RandomHorizontalFlip(),
+                T.RandomSelect(
+                    T.RandomResize(scales, max_size=1333),
+                    T.Compose([
+                        T.RandomResize(more_scales),
+                        T.RandomSizeCrop(250, 1100),
+                    ])
+                ),
+                # Resize everything to 1024 for SAM testing, #TODO: remove me later?
+                T.FixedResize([1024, 1024]),
+                normalize,
+            ])
+    else:
+        if image_set == 'train':
+            return T.Compose([
+                T.RandomHorizontalFlip(),
+                T.RandomSelect(
+                    T.RandomResize(scales, max_size=1333),
+                    T.Compose([
+                        T.RandomResize([400, 500, 600]),
+                        T.RandomSizeCrop(384, 600),
+                        # T.RandomResize(scales, max_size=1333),
+                    ])
+                ),
+                #Resize everything to 1024 for SAM testing, #TODO: remove me later?
+                T.FixedResize([1024, 1024]),
+                normalize,
+            ])
 
     if image_set == 'val' or image_set == 'test':
         return T.Compose([
@@ -252,6 +275,6 @@ def build(image_set, args):
 
 
     img_folder, ann_file = PATHS[image_set]
-    dataset = CocoDetection(img_folder, ann_file, transforms=make_coco_transforms(image_set), return_masks=args.masks,
-                            cache_mode=args.cache_mode, local_rank=get_local_rank(), local_size=get_local_size())
+    dataset = CocoDetection(img_folder, ann_file, transforms=make_coco_transforms(image_set, args), return_masks=args.masks,
+                            cache_mode=args.cache_mode, local_rank=get_local_rank(), local_size=get_local_size(), nuclear=args.delete_nuclear_channel)
     return dataset

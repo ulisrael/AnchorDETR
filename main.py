@@ -158,6 +158,10 @@ def get_args_parser():
     parser.add_argument('--val_json', default='val.json', type=str)
     parser.add_argument('--test_json', default='test.json', type=str)
 
+    # for ablation purposes
+    parser.add_argument('--delete_nuclear_channel', action='store_true', help='whether to delete nuclear channel')
+    parser.add_argument('--coco_transforms_all_scales', action='store_true', help='whether to use all scales for coco transforms')
+
     return parser
 
 
