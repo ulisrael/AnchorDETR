@@ -135,6 +135,8 @@ class SAMBackboneBase(nn.Module):
                 self.num_channels = [1280]
             elif sam_vit == "vit_b":
                 self.num_channels = [768]
+            elif sam_vit == "vit_l":
+                self.num_channels = [1024]
             else:
                 raise NotImplementedError
         self.body = backbone
@@ -180,7 +182,7 @@ class SAMBackbone(SAMBackboneBase):
         if sam_vit == "vit_b":
             path = "AnchorDETR/pretrained_models/sam_vit_b_01ec64.pth"
         if sam_vit == "vit_l":
-            path = "AnchorDETR/pretrained_models/sam_vit_l_0b9c0a.pth"
+            path = "AnchorDETR/pretrained_models/sam_vit_l_0b3195.pth"
         backbone = sam_model_registry[sam_vit](
             checkpoint=path
         )
