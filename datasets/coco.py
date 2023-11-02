@@ -180,12 +180,15 @@ def make_coco_transforms(image_set, args):
                 T.FixedResize([1024, 1024]),
                 normalize,
             ])
+
     elif args.additional_augmentations == 'random_crop_and_flip':
+        angles = [0, 22, 45, 67, 90, 112, 135, 157, 180]
         return T.Compose([
             T.RandomHorizontalFlip(),
             T.RandomHorizontalFlip(),
             T.RandomSelect(
                 T.RandomResize(scales, max_size=1333),
+                T.RandomRotate(angles),
                 T.Compose([
                     T.RandomResize([400, 500, 600]),
                     T.RandomSizeCrop(384, 600),
