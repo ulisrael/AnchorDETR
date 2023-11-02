@@ -148,6 +148,8 @@ def make_coco_transforms(image_set, args):
 
     scales = [480, 512, 544, 576, 608, 640, 672, 704, 736, 768, 800]
     more_scales = [280, 360, 480, 512, 544, 576, 608, 640, 672, 704, 736, 768, 800, 900, 1000, 1100, 1200]
+    angles = [0, 22, 45, 67, 90, 112, 135, 157, 180]
+
 
     if args.additional_augmentations == 'none':
         if image_set == 'train':
@@ -182,7 +184,7 @@ def make_coco_transforms(image_set, args):
             ])
 
     elif args.additional_augmentations == 'random_crop_and_flip':
-        angles = [0, 22, 45, 67, 90, 112, 135, 157, 180]
+
         return T.Compose([
             T.RandomHorizontalFlip(),
             T.RandomHorizontalFlip(),
@@ -217,6 +219,39 @@ def make_coco_transforms(image_set, args):
                         T.FixedResize([512, 512]),
                     ]), p=0.5
                 ), p=0.33
+            ),
+            T.FixedResize([1024, 1024]),
+            normalize,
+        ])
+    elif args.additional_augmentations == 'combined':
+        return T.Compose([
+            T.RandomHorizontalFlip(),
+            T.RandomHorizontalFlip(),
+            T.RandomSelect(
+                T.RandomResize(scales, max_size=1333),
+                T.RandomRotate(angles),
+                T.FixedResize([512, 512]),  # directly return 512x512 image
+                T.RandomSelect(
+                    # zoom in to max 256x256
+                    T.Compose([
+                        T.RandomSizeCrop(256, 512),
+                        T.FixedResize([512, 512]),
+                    ]),
+                    # zoom out to max 1024x1024
+                    T.Compose([
+                        T.RandomPad(512),
+                        T.RandomSizeCrop(400, 1024),
+                        T.FixedResize([512, 512]),
+                    ]), p=0.5
+                ), p=0.33
+            ),
+            T.RandomSelect(
+                T.RandomResize(scales, max_size=1333),
+                T.Compose([
+                    T.RandomResize([400, 500, 600]),
+                    T.RandomSizeCrop(384, 600),
+                    # T.RandomResize(scales, max_size=1333),
+                ])
             ),
             T.FixedResize([1024, 1024]),
             normalize,
