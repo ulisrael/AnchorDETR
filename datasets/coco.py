@@ -149,22 +149,7 @@ def make_coco_transforms(image_set, args):
     scales = [480, 512, 544, 576, 608, 640, 672, 704, 736, 768, 800]
     more_scales = [280, 360, 480, 512, 544, 576, 608, 640, 672, 704, 736, 768, 800, 900, 1000, 1100, 1200]
 
-    if args.coco_transforms_all_scales:
-        if image_set == 'train':
-            return T.Compose([
-                T.RandomHorizontalFlip(),
-                T.RandomSelect(
-                    T.RandomResize(scales, max_size=1333),
-                    T.Compose([
-                        T.RandomResize(more_scales),
-                        T.RandomSizeCrop(250, 1100),
-                    ])
-                ),
-                # Resize everything to 1024 for SAM testing, #TODO: remove me later?
-                T.FixedResize([1024, 1024]),
-                normalize,
-            ])
-    else:
+    if args.additional_augmentations == 'none':
         if image_set == 'train':
             return T.Compose([
                 T.RandomHorizontalFlip(),
@@ -180,6 +165,39 @@ def make_coco_transforms(image_set, args):
                 T.FixedResize([1024, 1024]),
                 normalize,
             ])
+    elif args.additional_augmentations == 'more_scales':
+        if image_set == 'train':
+            return T.Compose([
+                T.RandomHorizontalFlip(),
+                T.RandomSelect(
+                    T.RandomResize(scales, max_size=1333),
+                    T.Compose([
+                        T.RandomResize(more_scales),
+                        T.RandomSizeCrop(250, 1100),
+                    ])
+                ),
+                # Resize everything to 1024 for SAM testing, #TODO: remove me later?
+                T.FixedResize([1024, 1024]),
+                normalize,
+            ])
+    elif args.additional_augmentations == 'random_crop_and_flip':
+        return T.Compose([
+            T.RandomHorizontalFlip(),
+            T.RandomHorizontalFlip(),
+            T.RandomSelect(
+                T.RandomResize(scales, max_size=1333),
+                T.Compose([
+                    T.RandomResize([400, 500, 600]),
+                    T.RandomSizeCrop(384, 600),
+                    # T.RandomResize(scales, max_size=1333),
+                ])
+            ),
+            # Resize everything to 1024 for SAM testing, #TODO: remove me later?
+            T.FixedResize([1024, 1024]),
+            normalize,
+        ])
+    else:
+        raise ValueError(f'unknown {args.additional_augmentations}')
 
     if image_set == 'val' or image_set == 'test':
         return T.Compose([
