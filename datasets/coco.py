@@ -183,7 +183,7 @@ def make_coco_transforms(image_set, args):
                 normalize,
             ])
 
-    elif args.additional_augmentations == 'random_crop_and_flip':
+    elif args.additional_augmentations == 'random_rotation_and_flip':
 
         return T.Compose([
             T.RandomHorizontalFlip(),
