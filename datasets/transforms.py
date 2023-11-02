@@ -81,6 +81,23 @@ def hflip(image, target):
     return flipped_image, target
 
 
+def vflip(image, target):
+    flipped_image = F.vflip(image)
+
+    w, h = image.size
+
+    target = target.copy()
+    if "boxes" in target:
+        boxes = target["boxes"]
+        boxes = boxes[:, [0, 3, 2, 1]] * torch.as_tensor([1, -1, 1, -1]) + torch.as_tensor([0, h, 0, h])
+        target["boxes"] = boxes
+
+    if "masks" in target:
+        target['masks'] = target['masks'].flip(-2)  # flip along the vertical axis
+
+    return flipped_image, target
+
+
 def resize(image, target, size, max_size=None):
     # size can be min_size (scalar) or (w, h) tuple
 
@@ -197,6 +214,16 @@ class RandomHorizontalFlip(object):
         return img, target
 
 
+class RandomVerticalFlip(object):
+    def __init__(self, p=0.5):
+        self.p = p
+
+    def __call__(self, img, target):
+        if random.random() < self.p:
+            return vflip(img, target)
+        return img, target
+
+
 class RandomResize(object):
     def __init__(self, sizes, max_size=None):
         assert isinstance(sizes, (list, tuple))
@@ -207,6 +234,7 @@ class RandomResize(object):
         size = random.choice(self.sizes)
         return resize(img, target, size, self.max_size)
 
+
 class FixedResize(object):
     def __init__(self, sizes, max_size=None):
         assert isinstance(sizes, (list, tuple))
@@ -215,8 +243,9 @@ class FixedResize(object):
         self.max_size = max_size
 
     def __call__(self, img, target=None):
-        size = self.sizes # directly use the given size
+        size = self.sizes  # directly use the given size
         return resize(img, target, size, self.max_size)
+
 
 class RandomPad(object):
     def __init__(self, max_pad):
@@ -238,6 +267,7 @@ class RandomSizeCrop_same(object):
         region = T.RandomCrop.get_params(img, [crop_size, crop_size])
         return crop(img, target, region)
 
+
 class RandomPad_same(object):
     def __init__(self, max_pad):
         self.max_pad = max_pad
@@ -252,6 +282,7 @@ class RandomSelect(object):
     Randomly selects between transforms1 and transforms2,
     with probability p for transforms1 and (1 - p) for transforms2
     """
+
     def __init__(self, transforms1, transforms2, p=0.5):
         self.transforms1 = transforms1
         self.transforms2 = transforms2
