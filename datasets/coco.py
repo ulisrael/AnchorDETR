@@ -24,11 +24,12 @@ import datasets.transforms as T
 
 
 class CocoDetection(TvCocoDetection):
-    def __init__(self, img_folder, ann_file, transforms, return_masks, cache_mode=False, local_rank=0, local_size=1):
+    def __init__(self, img_folder, ann_file, transforms, return_masks, cache_mode=False, local_rank=0, local_size=1, nuclear=False):
         super(CocoDetection, self).__init__(img_folder, ann_file,
                                             cache_mode=cache_mode, local_rank=local_rank, local_size=local_size)
         self._transforms = transforms
         self.prepare = ConvertCocoPolysToMask(return_masks)
+        self.nuclear = nuclear
 
     def __getitem__(self, idx):
         img, target = super(CocoDetection, self).__getitem__(idx)
@@ -37,6 +38,11 @@ class CocoDetection(TvCocoDetection):
         img, target = self.prepare(img, target)
         if self._transforms is not None:
             img, target = self._transforms(img, target)
+        if self.nuclear:
+            img = img[2,:,:]
+            img = img.unsqueeze(0)
+            # repeat
+            img = img.repeat(3,1,1)
         return img, target
 
 
@@ -253,5 +259,5 @@ def build(image_set, args):
 
     img_folder, ann_file = PATHS[image_set]
     dataset = CocoDetection(img_folder, ann_file, transforms=make_coco_transforms(image_set), return_masks=args.masks,
-                            cache_mode=args.cache_mode, local_rank=get_local_rank(), local_size=get_local_size())
+                            cache_mode=args.cache_mode, local_rank=get_local_rank(), local_size=get_local_size(), nuclear=args.delete_nuclear_channel)
     return dataset
