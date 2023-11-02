@@ -21,6 +21,49 @@ from util.box_ops import box_xyxy_to_cxcywh
 from util.misc import interpolate
 
 
+class RandomRotate(object):
+    def __init__(self, angles):
+        assert isinstance(angles, (list, tuple))
+        self.angles = angles
+
+    def __call__(self, img, target=None):
+        angle = random.choice(self.angles)
+        return rotate(img, target, angle)
+
+
+def rotate(image, target, angle):
+    rotated_image = F.rotate(image, angle)
+
+    target = target.copy()
+
+    w, h = image.size
+
+    if "boxes" in target:
+        boxes = target["boxes"]
+        cx, cy = w / 2, h / 2
+
+        # Rotate each corner of the box
+        new_boxes = []
+        for box in boxes:
+            new_box = []
+            for i in range(0, 4, 2):
+                x, y = box[i], box[i + 1]
+                x_new = (x - cx) * torch.cos(torch.deg2rad(angle)) - (y - cy) * torch.sin(torch.deg2rad(angle)) + cx
+                y_new = (x - cx) * torch.sin(torch.deg2rad(angle)) + (y - cy) * torch.cos(torch.deg2rad(angle)) + cy
+                new_box.extend([x_new, y_new])
+
+            xmin, ymin, xmax, ymax = torch.tensor(new_box).reshape(2, 2).min(0)[0], \
+            torch.tensor(new_box).reshape(2, 2).min(1)[1], torch.tensor(new_box).reshape(2, 2).max(0)[0], \
+            torch.tensor(new_box).reshape(2, 2).max(1)[1]
+            new_boxes.append([xmin, ymin, xmax, ymax])
+
+        target["boxes"] = torch.stack(new_boxes)
+
+    if "masks" in target:
+        target['masks'] = F.rotate(target['masks'], angle)
+
+    return rotated_image, target
+
 def crop(image, target, region):
     cropped_image = F.crop(image, *region)
 
