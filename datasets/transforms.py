@@ -23,6 +23,34 @@ from util.box_ops import box_xyxy_to_cxcywh
 from util.misc import interpolate
 
 
+def visualize_boxes(image, boxes, color="red", width=2):
+    """
+    Visualize bounding boxes on a PIL image.
+
+    Args:
+    - image (PIL.Image): The image on which to draw the bounding boxes.
+    - boxes (list or tensor): List of bounding boxes in [x1, y1, x2, y2] format.
+    - color (str or tuple): Color for the bounding boxes.
+    - width (int): Line width of the bounding boxes.
+
+    Returns:
+    - PIL.Image: Image with drawn bounding boxes.
+    """
+
+    # Convert image to RGB mode (for drawing)
+    image = image.convert("RGB")
+    draw = ImageDraw.Draw(image)
+
+    for box in boxes:
+        x_min, y_min, x_max, y_max = box
+        draw.rectangle(
+            [x_min, y_min, x_max, y_max], outline=color, width=width
+        )
+
+    image.show()
+    return image
+
+
 class RandomRotate(object):
     def __init__(self, angles):
         assert isinstance(angles, (list, tuple))
@@ -39,7 +67,7 @@ def rotate(image, target, angle):
     target = target.copy()
     w, h = image.size
     cx, cy = w / 2, h / 2
-    rad_angle = math.radians(-angle)  # Negative for the correct direction
+    rad_angle = math.radians(angle)  # Changed here to adjust the rotation direction
 
     keep_indices = []
 
@@ -68,19 +96,17 @@ def rotate(image, target, angle):
             rotated_corners += torch.tensor([cx, cy])
 
             # Get the min and max points
-            min_xy = torch.min(rotated_corners, dim=0)[0]
-            max_xy = torch.max(rotated_corners, dim=0)[0]
+            min_xy = torch.clamp(torch.min(rotated_corners, dim=0)[0], 0, max(w-1, h-1))  # Clamp to image size
+            max_xy = torch.clamp(torch.max(rotated_corners, dim=0)[0], 0, max(w-1, h-1))  # Clamp to image size
 
-            # Skip boxes with any negative coordinates
-            if torch.any(min_xy < 0) or torch.any(max_xy >= torch.tensor([w, h])):
-                continue
-
-            # Stack into a new box, swap elements to conform to the new format
+            # Create a new box
             new_box = torch.cat((min_xy, max_xy)).unsqueeze(0)
-            new_box = new_box[:, [1, 0, 3, 2]]  # Swap x and y coordinates
 
             new_boxes.append(new_box)
             keep_indices.append(idx)
+
+        new_boxes = torch.cat(new_boxes, dim=0)
+        visualize_boxes(rotated_image, new_boxes, color="red", width=2)
 
         # Filter other target fields based on keep_indices
         if keep_indices:
