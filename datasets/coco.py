@@ -228,9 +228,9 @@ def make_coco_transforms(image_set, args):
             return T.Compose([
                 T.RandomHorizontalFlip(),
                 T.RandomVerticalFlip(),
+                T.RandomResize(scales, max_size=1333),
+                T.RandomRotate(angles),
                 T.RandomSelect(
-                    T.RandomResize(scales, max_size=1333),
-                    T.RandomRotate(angles),
                     T.FixedResize([512, 512]),  # directly return 512x512 image
                     T.RandomSelect(
                         # zoom in to max 256x256
