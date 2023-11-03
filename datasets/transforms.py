@@ -105,8 +105,6 @@ def rotate(image, target, angle):
             new_boxes.append(new_box)
             keep_indices.append(idx)
 
-        new_boxes = torch.cat(new_boxes, dim=0)
-        visualize_boxes(rotated_image, new_boxes, color="red", width=2)
 
         # Filter other target fields based on keep_indices
         if keep_indices:
