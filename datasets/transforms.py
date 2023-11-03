@@ -10,12 +10,14 @@
 """
 Transforms and data augmentation for both image + bbox.
 """
+import math
 import random
 
 import PIL
 import torch
 import torchvision.transforms as T
 import torchvision.transforms.functional as F
+from PIL import ImageDraw
 
 from util.box_ops import box_xyxy_to_cxcywh
 from util.misc import interpolate
@@ -35,34 +37,73 @@ def rotate(image, target, angle):
     rotated_image = F.rotate(image, angle)
 
     target = target.copy()
-
     w, h = image.size
+    cx, cy = w / 2, h / 2
+    rad_angle = math.radians(-angle)  # Negative for the correct direction
+
+    keep_indices = []
 
     if "boxes" in target:
         boxes = target["boxes"]
-        cx, cy = w / 2, h / 2
-
-        # Rotate each corner of the box
         new_boxes = []
-        for box in boxes:
-            new_box = []
-            for i in range(0, 4, 2):
-                x, y = box[i], box[i + 1]
-                x_new = (x - cx) * torch.cos(torch.deg2rad(angle)) - (y - cy) * torch.sin(torch.deg2rad(angle)) + cx
-                y_new = (x - cx) * torch.sin(torch.deg2rad(angle)) + (y - cy) * torch.cos(torch.deg2rad(angle)) + cy
-                new_box.extend([x_new, y_new])
+        for idx, box in enumerate(boxes):
+            corners = torch.tensor([
+                [box[0], box[1]],  # Top-left corner
+                [box[2], box[1]],  # Top-right corner
+                [box[2], box[3]],  # Bottom-right corner
+                [box[0], box[3]],  # Bottom-left corner
+            ])
 
-            xmin, ymin, xmax, ymax = torch.tensor(new_box).reshape(2, 2).min(0)[0], \
-            torch.tensor(new_box).reshape(2, 2).min(1)[1], torch.tensor(new_box).reshape(2, 2).max(0)[0], \
-            torch.tensor(new_box).reshape(2, 2).max(1)[1]
-            new_boxes.append([xmin, ymin, xmax, ymax])
+            # Translate corners to origin based on center of image
+            corners -= torch.tensor([cx, cy])
 
-        target["boxes"] = torch.stack(new_boxes)
+            # Rotate corners
+            rotation_matrix = torch.tensor([
+                [math.cos(rad_angle), -math.sin(rad_angle)],
+                [math.sin(rad_angle), math.cos(rad_angle)]
+            ], dtype=torch.float32)
+            rotated_corners = torch.matmul(corners, rotation_matrix)
 
-    if "masks" in target:
-        target['masks'] = F.rotate(target['masks'], angle)
+            # Translate corners back
+            rotated_corners += torch.tensor([cx, cy])
+
+            # Get the min and max points
+            min_xy = torch.min(rotated_corners, dim=0)[0]
+            max_xy = torch.max(rotated_corners, dim=0)[0]
+
+            # Skip boxes with any negative coordinates
+            if torch.any(min_xy < 0) or torch.any(max_xy >= torch.tensor([w, h])):
+                continue
+
+            # Stack into a new box, swap elements to conform to the new format
+            new_box = torch.cat((min_xy, max_xy)).unsqueeze(0)
+            new_box = new_box[:, [1, 0, 3, 2]]  # Swap x and y coordinates
+
+            new_boxes.append(new_box)
+            keep_indices.append(idx)
+
+        # Filter other target fields based on keep_indices
+        if keep_indices:
+            target["boxes"] = torch.cat(new_boxes, dim=0)
+            target["area"] = target["area"][keep_indices]
+            if "labels" in target:
+                target["labels"] = target["labels"][keep_indices]
+            if "iscrowd" in target:
+                target["iscrowd"] = target["iscrowd"][keep_indices]
+            if "masks" in target:
+                target["masks"] = target["masks"][keep_indices]
+        else:
+            target["boxes"] = torch.empty((0, 4))
+            target["area"] = torch.empty((0,))
+            if "labels" in target:
+                target["labels"] = torch.empty((0,))
+            if "iscrowd" in target:
+                target["iscrowd"] = torch.empty((0,))
+            if "masks" in target:
+                target["masks"] = torch.empty((0, h, w))
 
     return rotated_image, target
+
 
 def crop(image, target, region):
     cropped_image = F.crop(image, *region)
