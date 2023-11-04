@@ -257,6 +257,23 @@ def make_coco_transforms(image_set, args):
                 T.FixedResize([1024, 1024]),
                 normalize,
             ])
+
+        elif args.additional_augmentations == 'combined_v2':
+            return T.Compose([
+                T.RandomHorizontalFlip(),
+                T.RandomVerticalFlip(),
+                T.RandomSelect(
+                    T.RandomResize(scales, max_size=1333),
+                    T.Compose([
+                        T.RandomResize([400, 500, 600]),
+                        T.RandomSizeCrop(384, 600),
+                        # T.RandomResize(scales, max_size=1333),
+                    ])
+                ),
+                T.RandomRotate(angles),
+                T.FixedResize([1024, 1024]),
+                normalize,
+            ])
         else:
             raise ValueError(f'unknown {args.additional_augmentations}')
 
