@@ -148,24 +148,12 @@ def make_coco_transforms(image_set, args):
 
     scales = [480, 512, 544, 576, 608, 640, 672, 704, 736, 768, 800]
     more_scales = [280, 360, 480, 512, 544, 576, 608, 640, 672, 704, 736, 768, 800, 900, 1000, 1100, 1200]
+    angles = [0.0, 22.5, 45.0, 67.5, 90.0, 112.5,
+              135.0, 157.5, 180.0, 202.5, 225.0, 247.5,
+              270.0, 292.5, 315.0, 337.5]
 
-    if args.coco_transforms_all_scales:
-        if image_set == 'train':
-            return T.Compose([
-                T.RandomHorizontalFlip(),
-                T.RandomSelect(
-                    T.RandomResize(scales, max_size=1333),
-                    T.Compose([
-                        T.RandomResize(more_scales),
-                        T.RandomSizeCrop(250, 1100),
-                    ])
-                ),
-                # Resize everything to 1024 for SAM testing, #TODO: remove me later?
-                T.FixedResize([1024, 1024]),
-                normalize,
-            ])
-    else:
-        if image_set == 'train':
+    if image_set == 'train':
+        if args.additional_augmentations == 'none':
             return T.Compose([
                 T.RandomHorizontalFlip(),
                 T.RandomSelect(
@@ -180,12 +168,121 @@ def make_coco_transforms(image_set, args):
                 T.FixedResize([1024, 1024]),
                 normalize,
             ])
+        elif args.additional_augmentations == 'more_scales':
+            if image_set == 'train':
+                return T.Compose([
+                    T.RandomHorizontalFlip(),
+                    T.RandomSelect(
+                        T.RandomResize(scales, max_size=1333),
+                        T.Compose([
+                            T.RandomResize(more_scales),
+                            T.RandomSizeCrop(250, 1100),
+                        ])
+                    ),
+                    # Resize everything to 1024 for SAM testing, #TODO: remove me later?
+                    T.FixedResize([1024, 1024]),
+                    normalize,
+                ])
+
+        elif args.additional_augmentations == 'random_rotation_and_flip':
+
+            return T.Compose([
+                T.RandomHorizontalFlip(),
+                T.RandomVerticalFlip(),
+                T.RandomRotate(angles),
+                T.RandomSelect(
+                    T.RandomResize(scales, max_size=1333),
+                    T.Compose([
+                        T.RandomResize([400, 500, 600]),
+                        T.RandomSizeCrop(384, 600),
+                        # T.RandomResize(scales, max_size=1333),
+                    ])
+                ),
+                # Resize everything to 1024 for SAM testing, #TODO: remove me later?
+                T.FixedResize([1024, 1024]),
+                normalize,
+            ])
+        elif args.additional_augmentations == 'qilin':
+            return T.Compose([
+                T.RandomHorizontalFlip(),
+                T.RandomSelect(
+                    T.FixedResize([512, 512]),  # directly return 512x512 image
+                    T.RandomSelect(
+                        # zoom in to max 256x256
+                        T.Compose([
+                            T.RandomSizeCrop(256, 512),
+                            T.FixedResize([512, 512]),
+                        ]),
+                        # zoom out to max 1024x1024
+                        T.Compose([
+                            T.RandomPad(512),
+                            T.RandomSizeCrop(400, 1024),
+                            T.FixedResize([512, 512]),
+                        ]), p=0.5
+                    ), p=0.33
+                ),
+                T.FixedResize([1024, 1024]),
+                normalize,
+            ])
+        elif args.additional_augmentations == 'combined':
+            return T.Compose([
+                T.RandomHorizontalFlip(),
+                T.RandomVerticalFlip(),
+                T.RandomResize(scales, max_size=1333),
+                T.RandomRotate(angles),
+                T.RandomSelect(
+                    T.FixedResize([512, 512]),  # directly return 512x512 image
+                    T.RandomSelect(
+                        # zoom in to max 256x256
+                        T.Compose([
+                            T.RandomSizeCrop(256, 512),
+                            T.FixedResize([512, 512]),
+                        ]),
+                        # zoom out to max 1024x1024
+                        T.Compose([
+                            T.RandomPad(512),
+                            T.RandomSizeCrop(400, 1024),
+                            T.FixedResize([512, 512]),
+                        ]), p=0.5
+                    ), p=0.33
+                ),
+                T.RandomSelect(
+                    T.RandomResize(scales, max_size=1333),
+                    T.Compose([
+                        T.RandomResize([400, 500, 600]),
+                        T.RandomSizeCrop(384, 600),
+                        # T.RandomResize(scales, max_size=1333),
+                    ])
+                ),
+                T.FixedResize([1024, 1024]),
+                normalize,
+            ])
+
+        elif args.additional_augmentations == 'combined_v2':
+            return T.Compose([
+                T.RandomHorizontalFlip(),
+                T.RandomVerticalFlip(),
+                T.RandomSelect(
+                    T.RandomResize(scales, max_size=1333),
+                    T.Compose([
+                        T.RandomResize([400, 500, 600]),
+                        T.RandomSizeCrop(384, 600),
+                        # T.RandomResize(scales, max_size=1333),
+                    ])
+                ),
+                T.RandomRotate(angles),
+                T.FixedResize([1024, 1024]),
+                normalize,
+            ])
+        else:
+            raise ValueError(f'unknown {args.additional_augmentations}')
 
     if image_set == 'val' or image_set == 'test':
         return T.Compose([
             # T.RandomResize([800], max_size=1333),
             #Resize everything to 1024 for SAM testing
             T.FixedResize([1024,1024]),
+            # T.RandomRotate(angles),
             normalize,
         ])
     # #############################################################

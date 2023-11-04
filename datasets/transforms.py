@@ -10,15 +10,123 @@
 """
 Transforms and data augmentation for both image + bbox.
 """
+import math
 import random
 
 import PIL
 import torch
 import torchvision.transforms as T
 import torchvision.transforms.functional as F
+from PIL import ImageDraw
 
 from util.box_ops import box_xyxy_to_cxcywh
 from util.misc import interpolate
+
+
+def visualize_boxes(image, boxes, color="red", width=2):
+    """
+    Visualize bounding boxes on a PIL image.
+
+    Args:
+    - image (PIL.Image): The image on which to draw the bounding boxes.
+    - boxes (list or tensor): List of bounding boxes in [x1, y1, x2, y2] format.
+    - color (str or tuple): Color for the bounding boxes.
+    - width (int): Line width of the bounding boxes.
+
+    Returns:
+    - PIL.Image: Image with drawn bounding boxes.
+    """
+
+    # Convert image to RGB mode (for drawing)
+    image = image.convert("RGB")
+    draw = ImageDraw.Draw(image)
+
+    for box in boxes:
+        x_min, y_min, x_max, y_max = box
+        draw.rectangle(
+            [x_min, y_min, x_max, y_max], outline=color, width=width
+        )
+
+    image.show()
+    return image
+
+
+class RandomRotate(object):
+    def __init__(self, angles):
+        assert isinstance(angles, (list, tuple))
+        self.angles = angles
+
+    def __call__(self, img, target=None):
+        angle = random.choice(self.angles)
+        return rotate(img, target, angle)
+
+
+def rotate(image, target, angle):
+    rotated_image = F.rotate(image, angle)
+
+    target = target.copy()
+    w, h = image.size
+    cx, cy = w / 2, h / 2
+    rad_angle = math.radians(angle)  # Changed here to adjust the rotation direction
+
+    keep_indices = []
+
+    if "boxes" in target:
+        boxes = target["boxes"]
+        new_boxes = []
+        for idx, box in enumerate(boxes):
+            corners = torch.tensor([
+                [box[0], box[1]],  # Top-left corner
+                [box[2], box[1]],  # Top-right corner
+                [box[2], box[3]],  # Bottom-right corner
+                [box[0], box[3]],  # Bottom-left corner
+            ])
+
+            # Translate corners to origin based on center of image
+            corners -= torch.tensor([cx, cy])
+
+            # Rotate corners
+            rotation_matrix = torch.tensor([
+                [math.cos(rad_angle), -math.sin(rad_angle)],
+                [math.sin(rad_angle), math.cos(rad_angle)]
+            ], dtype=torch.float32)
+            rotated_corners = torch.matmul(corners, rotation_matrix)
+
+            # Translate corners back
+            rotated_corners += torch.tensor([cx, cy])
+
+            # Get the min and max points
+            min_xy = torch.clamp(torch.min(rotated_corners, dim=0)[0], 0, max(w-1, h-1))  # Clamp to image size
+            max_xy = torch.clamp(torch.max(rotated_corners, dim=0)[0], 0, max(w-1, h-1))  # Clamp to image size
+
+            # Create a new box
+            new_box = torch.cat((min_xy, max_xy)).unsqueeze(0)
+
+            new_boxes.append(new_box)
+            keep_indices.append(idx)
+
+
+        # Filter other target fields based on keep_indices
+        if keep_indices:
+            target["boxes"] = torch.cat(new_boxes, dim=0)
+            target["area"] = target["area"][keep_indices]
+            if "labels" in target:
+                target["labels"] = target["labels"][keep_indices]
+            if "iscrowd" in target:
+                target["iscrowd"] = target["iscrowd"][keep_indices]
+            if "masks" in target:
+                target["masks"] = target["masks"][keep_indices]
+        else:
+            target["boxes"] = torch.empty((0, 4))
+            target["area"] = torch.empty((0,))
+            if "labels" in target:
+                target["labels"] = torch.empty((0,))
+            if "iscrowd" in target:
+                target["iscrowd"] = torch.empty((0,))
+            if "masks" in target:
+                target["masks"] = torch.empty((0, h, w))
+
+    return rotated_image, target
 
 
 def crop(image, target, region):
@@ -77,6 +185,23 @@ def hflip(image, target):
 
     if "masks" in target:
         target['masks'] = target['masks'].flip(-1)
+
+    return flipped_image, target
+
+
+def vflip(image, target):
+    flipped_image = F.vflip(image)
+
+    w, h = image.size
+
+    target = target.copy()
+    if "boxes" in target:
+        boxes = target["boxes"]
+        boxes = boxes[:, [0, 3, 2, 1]] * torch.as_tensor([1, -1, 1, -1]) + torch.as_tensor([0, h, 0, h])
+        target["boxes"] = boxes
+
+    if "masks" in target:
+        target['masks'] = target['masks'].flip(-2)  # flip along the vertical axis
 
     return flipped_image, target
 
@@ -197,6 +322,16 @@ class RandomHorizontalFlip(object):
         return img, target
 
 
+class RandomVerticalFlip(object):
+    def __init__(self, p=0.5):
+        self.p = p
+
+    def __call__(self, img, target):
+        if random.random() < self.p:
+            return vflip(img, target)
+        return img, target
+
+
 class RandomResize(object):
     def __init__(self, sizes, max_size=None):
         assert isinstance(sizes, (list, tuple))
@@ -207,6 +342,7 @@ class RandomResize(object):
         size = random.choice(self.sizes)
         return resize(img, target, size, self.max_size)
 
+
 class FixedResize(object):
     def __init__(self, sizes, max_size=None):
         assert isinstance(sizes, (list, tuple))
@@ -215,8 +351,9 @@ class FixedResize(object):
         self.max_size = max_size
 
     def __call__(self, img, target=None):
-        size = self.sizes # directly use the given size
+        size = self.sizes  # directly use the given size
         return resize(img, target, size, self.max_size)
+
 
 class RandomPad(object):
     def __init__(self, max_pad):
@@ -238,6 +375,7 @@ class RandomSizeCrop_same(object):
         region = T.RandomCrop.get_params(img, [crop_size, crop_size])
         return crop(img, target, region)
 
+
 class RandomPad_same(object):
     def __init__(self, max_pad):
         self.max_pad = max_pad
@@ -252,6 +390,7 @@ class RandomSelect(object):
     Randomly selects between transforms1 and transforms2,
     with probability p for transforms1 and (1 - p) for transforms2
     """
+
     def __init__(self, transforms1, transforms2, p=0.5):
         self.transforms1 = transforms1
         self.transforms2 = transforms2
