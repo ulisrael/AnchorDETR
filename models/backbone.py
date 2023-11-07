@@ -157,10 +157,14 @@ class ModifiedImageEncoderViT(nn.Module):
         # Extract all layers up to but not including 'neck'
         self.patch_embed = original_model.patch_embed
         self.blocks = original_model.blocks
+        self.pos_embed = original_model.pos_embed
 
     def forward(self, x):
         # Apply patch embedding
         x = self.patch_embed(x)
+
+        if self.pos_embed is not None:
+            x = x + self.pos_embed
 
         # Pass through blocks
         for block in self.blocks:
