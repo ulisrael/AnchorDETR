@@ -316,11 +316,13 @@ class PostProcess(nn.Module):
         """
         out_logits, out_bbox = outputs['pred_logits'], outputs['pred_boxes']
 
+        num_queries = out_logits.shape[1]
+
         assert len(out_logits) == len(target_sizes)
         assert target_sizes.shape[1] == 2
 
         prob = out_logits.sigmoid()
-        topk_values, topk_indexes = torch.topk(prob.view(out_logits.shape[0], -1), 3000, dim=1)
+        topk_values, topk_indexes = torch.topk(prob.view(out_logits.shape[0], -1), num_queries, dim=1)
         scores = topk_values
         topk_boxes = topk_indexes // out_logits.shape[2]
         labels = topk_indexes % out_logits.shape[2]
