@@ -141,7 +141,7 @@ def get_args_parser():
     parser.add_argument('--device_num', default=0, type=int, help='device number')
 
     parser.add_argument('--wandb_run_name', default='detr_testing', type=str, help='wandb run name')
-    parser.add_argument('--wandb_project', default='anchor_detr_new', type=str, help='wandb project name')
+    parser.add_argument('--wandb_project', default='anchor_detr_revisions', type=str, help='wandb project name')
 
     parser.add_argument('--only_neck', action='store_true', help='whether to train only neck')
     parser.add_argument('--freeze_backbone', action='store_true', help='whether to train only backbone')
@@ -193,7 +193,7 @@ def main(args):
 
     run_name = args.wandb_run_name
 
-    wandb.init(project=args.wandb_project, entity='allcell', name=run_name)
+    wandb.init(project=args.wandb_project, entity='allcell2', name=run_name)
 
     # define backbone
     # from models.backbone import build_backbone
