@@ -19,8 +19,8 @@ import torchvision.transforms as T
 import torchvision.transforms.functional as F
 from PIL import ImageDraw
 
-from util.box_ops import box_xyxy_to_cxcywh
-from util.misc import interpolate
+from AnchorDETR.util.box_ops import box_xyxy_to_cxcywh
+from AnchorDETR.util.misc import interpolate
 
 
 def visualize_boxes(image, boxes, color="red", width=2):
@@ -96,15 +96,14 @@ def rotate(image, target, angle):
             rotated_corners += torch.tensor([cx, cy])
 
             # Get the min and max points
-            min_xy = torch.clamp(torch.min(rotated_corners, dim=0)[0], 0, max(w-1, h-1))  # Clamp to image size
-            max_xy = torch.clamp(torch.max(rotated_corners, dim=0)[0], 0, max(w-1, h-1))  # Clamp to image size
+            min_xy = torch.clamp(torch.min(rotated_corners, dim=0)[0], 0, max(w - 1, h - 1))  # Clamp to image size
+            max_xy = torch.clamp(torch.max(rotated_corners, dim=0)[0], 0, max(w - 1, h - 1))  # Clamp to image size
 
             # Create a new box
             new_box = torch.cat((min_xy, max_xy)).unsqueeze(0)
 
             new_boxes.append(new_box)
             keep_indices.append(idx)
-
 
         # Filter other target fields based on keep_indices
         if keep_indices:
@@ -451,3 +450,19 @@ class Compose(object):
             format_string += "    {0}".format(t)
         format_string += "\n)"
         return format_string
+
+
+import torchvision.transforms.v2 as T2
+
+
+# random color augmentations
+class RandomColorAugmentation(object):
+    def __init__(self, p=0.5):
+        self.p = p
+
+    def __call__(self, img, target):
+        if random.random() < self.p:
+            img = T2.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1)(img)
+
+        return img, target
+
