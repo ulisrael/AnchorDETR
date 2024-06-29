@@ -18,9 +18,9 @@ import torch
 import torch.utils.data
 from pycocotools import mask as coco_mask
 
-from .torchvision_datasets import CocoDetection as TvCocoDetection
-from util.misc import get_local_rank, get_local_size
-import datasets.transforms as T
+from AnchorDETR.datasets.torchvision_datasets import CocoDetection as TvCocoDetection
+from AnchorDETR.util.misc import get_local_rank, get_local_size
+import AnchorDETR.datasets.transforms as T
 
 
 class CocoDetection(TvCocoDetection):
@@ -184,6 +184,24 @@ def make_coco_transforms(image_set, args):
                     ),
                     # Resize everything to 1024 for SAM testing, #TODO: remove me later?
                     T.FixedResize([1024, 1024]),
+                    T.RandomColorAugmentation(),
+                    normalize,
+                ])
+
+        elif args.additional_augmentations == 'newest':
+            if image_set == 'train':
+                return T.Compose([
+                    T.RandomHorizontalFlip(),
+                    T.RandomSelect(
+                        T.RandomResize(scales, max_size=1333),
+                        T.Compose([
+                            T.RandomResize(more_scales),
+                            T.RandomSizeCrop(250, 1100),
+                        ])
+                    ),
+                    # Resize everything to 1024 for SAM testing, #TODO: remove me later?
+                    T.FixedResize([1024, 1024]),
+                    T.RandomColorAugmentation(),
                     normalize,
                 ])
 
@@ -378,3 +396,35 @@ def build(image_set, args):
     dataset = CocoDetection(img_folder, ann_file, transforms=make_coco_transforms(image_set, args), return_masks=args.masks,
                             cache_mode=args.cache_mode, local_rank=get_local_rank(), local_size=get_local_size(), nuclear=args.delete_nuclear_channel)
     return dataset
+
+
+if __name__ == '__main__':
+
+    # make args as namespace
+    class Args:
+        def __init__(self):
+            self.additional_augmentations = 'more_scales'
+
+    args = Args()
+
+    transforms  = make_coco_transforms('train', args)
+
+    from skimage import data
+    # test it
+    example_image = data.immunohistochemistry()
+    # to PIL image
+    from PIL import Image
+    example_image = Image.fromarray(example_image)
+    import matplotlib.pyplot as plt
+
+    plt.imshow(example_image)
+    plt.show()
+
+    targets = [{'segmentation': [[1, 1, 1, 2, 2, 2, 2, 1]], 'bbox': [1, 1, 1, 1], 'category_id': 1}]
+
+
+    # transforms
+    example_image = transforms(example_image, {'image_id': 0, 'annotations': targets})
+
+    plt.imshow(example_image[0].permute(1,2,0))
+    plt.show()
