@@ -160,7 +160,7 @@ def get_args_parser():
 
     # for ablation purposes
     parser.add_argument('--delete_nuclear_channel', action='store_true', help='whether to delete nuclear channel')
-    parser.add_argument('--additional_augmentations', default="none", type=str, choices=['none','more_scales', 'random_rotation_and_flip', 'qilin', 'combined', 'combined_v2'], help='whether to delete nuclear channel')
+    parser.add_argument('--additional_augmentations', default="none", type=str, choices=['none','more_scales', 'newest' ,'random_rotation_and_flip', 'qilin', 'combined', 'combined_v2'], help='whether to delete nuclear channel')
 
     return parser
 
@@ -193,7 +193,7 @@ def main(args):
 
     run_name = args.wandb_run_name
 
-    wandb.init(project=args.wandb_project, entity='allcell2', name=run_name)
+    wandb.init(project=args.wandb_project, entity='allcell', name=run_name)
 
     # define backbone
     # from models.backbone import build_backbone
