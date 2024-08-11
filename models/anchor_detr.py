@@ -16,13 +16,13 @@ from torch import nn
 
 from AnchorDETR.util import box_ops
 from AnchorDETR.util.misc import (NestedTensor, nested_tensor_from_tensor_list,
-                       accuracy, get_world_size, interpolate,
-                       is_dist_avail_and_initialized)
+                                  accuracy, get_world_size, interpolate,
+                                  is_dist_avail_and_initialized)
 
 from AnchorDETR.models.backbone import build_backbone
 from AnchorDETR.models.matcher import build_matcher
 from AnchorDETR.models.segmentation import (DETRsegm, PostProcessPanoptic, PostProcessSegm,
-                           dice_loss, sigmoid_focal_loss)
+                                            dice_loss, sigmoid_focal_loss)
 from AnchorDETR.models.transformer import build_transformer
 import copy
 
@@ -30,7 +30,7 @@ import copy
 class AnchorDETR(nn.Module):
     """ This is the AnchorDETR module that performs object detection """
 
-    def __init__(self, backbone, transformer,  num_feature_levels, aux_loss=True):
+    def __init__(self, backbone, transformer, num_feature_levels, aux_loss=True):
         """ Initializes the model.
         Parameters:
             backbone: torch module of the backbone to be used. See backbone.py
@@ -395,3 +395,28 @@ def build(args):
             postprocessors["panoptic"] = PostProcessPanoptic(is_thing_map, threshold=0.85)
 
     return model, criterion, postprocessors
+
+
+from AnchorDETR.models.backbone import SAMBackbone
+
+
+def build_inference(args):
+    backbone = SAMBackbone(
+        "SAM",
+        train_backbone=False,
+        return_interm_layers=False,
+        dilation=False,
+        only_neck=False,
+        freeze_backbone=False,
+        sam_vit="vit_b",
+    )
+    transformer = build_transformer(args)
+
+    model = AnchorDETR(
+        backbone,
+        transformer,
+        num_feature_levels=args.num_feature_levels,
+        aux_loss=True,
+    )
+    postprocessors = {"bbox": PostProcess()}
+    return model, postprocessors
