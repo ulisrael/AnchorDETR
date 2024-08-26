@@ -23,6 +23,7 @@ from AnchorDETR.util.misc import get_local_rank, get_local_size
 import AnchorDETR.datasets.transforms as T
 
 
+import matplotlib.pyplot as plt
 class CocoDetection(TvCocoDetection):
     def __init__(self, img_folder, ann_file, transforms, return_masks, cache_mode=False, local_rank=0, local_size=1, nuclear=False):
         super(CocoDetection, self).__init__(img_folder, ann_file,
@@ -32,12 +33,24 @@ class CocoDetection(TvCocoDetection):
         self.nuclear = nuclear
 
     def __getitem__(self, idx):
-        img, target = super(CocoDetection, self).__getitem__(idx)
+        img, target, path = super(CocoDetection, self).__getitem__(idx)
         image_id = self.ids[idx]
         target = {'image_id': image_id, 'annotations': target}
         img, target = self.prepare(img, target)
         if self._transforms is not None:
             img, target = self._transforms(img, target)
+        # show each channel individually
+        # fig, ax = plt.subplots(1, 3)
+        # ax[0].imshow(img[0])
+        # ax[1].imshow(img[1])
+        # # ax[1].colorbar()
+        # ax[2].imshow(img[2])
+        # plt.imshow(img.permute(1,2,0))
+        # plt.colorbar()
+        # # ax[2].colorbar()
+        # plt.title(path)
+        # plt.show()
+        # print('d')
         if self.nuclear:
             img = img[2,:,:]
             img = img.unsqueeze(0)
@@ -295,6 +308,34 @@ def make_coco_transforms(image_set, args):
                 T.FixedResize([1024, 1024]),
                 normalize,
             ])
+        elif args.additional_augmentations == 'newest_aug_2024':
+            prob = 0.25
+            if image_set == 'train':
+                return T.Compose([
+                    # T.RandomHorizontalFlip(),
+                    # T.RandomRotate(angles),
+                    # T.RandomSelect(
+                    #     T.RandomResize(scales, max_size=1333),
+                    #     T.Compose([
+                    #         T.RandomResize(more_scales),
+                    #         T.RandomSizeCrop(250, 1100),
+                    #     ])
+                    # ),
+                    T.RandomZoomOut(p=prob, max_zoom_out=0.2),
+                    # Resize everything to 1024 for SAM testing, #TODO: remove me later?
+                    T.FixedResize([1024, 1024]),
+                    T.PercentileThreshold(),
+                    normalize,
+                    T.Standardize(),
+                    T.ToRGB(),
+                    T.GaussianNoise(p=prob),
+                    T.RandomGamma(p=prob),
+                    T.RandomGauss(p=prob),
+                    # T.RandomEqualize(),
+                    T.RandomHistogram(p=prob),
+                    T.RandomSharpening(p=prob),
+                    T.Standardize(),
+                ])
         else:
             raise ValueError(f'unknown {args.additional_augmentations}')
 
@@ -305,6 +346,8 @@ def make_coco_transforms(image_set, args):
             T.FixedResize([1024,1024]),
             # T.RandomRotate(angles),
             normalize,
+            T.Standardize(),
+            T.ToRGB(),
         ])
     # #############################################################
 
