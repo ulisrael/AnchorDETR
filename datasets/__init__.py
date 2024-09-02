@@ -12,6 +12,7 @@ from .torchvision_datasets import CocoDetection
 
 from .coco import build as build_coco
 
+import datasets
 
 def get_coco_api_from_dataset(dataset):
     for _ in range(10):
@@ -19,7 +20,7 @@ def get_coco_api_from_dataset(dataset):
         #     break
         if isinstance(dataset, torch.utils.data.Subset):
             dataset = dataset.dataset
-    if isinstance(dataset, CocoDetection):
+    if isinstance(dataset, datasets.coco.CocoDetection):
         return dataset.coco
 
 
