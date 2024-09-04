@@ -21,7 +21,7 @@ import torchvision.transforms.functional as F
 from PIL import ImageDraw
 from monai.transforms import RandHistogramShift
 
-from AnchorDETR.util.box_ops import box_xyxy_to_cxcywh
+from AnchorDETR.util.box_ops import box_xyxy_to_cxcywh, box_cxcywh_to_xyxy
 from AnchorDETR.util.misc import interpolate
 
 
@@ -347,7 +347,6 @@ class RandomResize(object):
 class FixedResize(object):
     def __init__(self, sizes, max_size=None):
         assert isinstance(sizes, (list, tuple))
-        assert len(sizes) == 2, f'len(sizes) = {len(size)} != 2, (width, height) should be given'
         self.sizes = sizes
         self.max_size = max_size
 
@@ -602,7 +601,32 @@ class RandomZoomOut(object):
         self.p = p
 
     def __call__(self, img, tgt):
-        if random.random() < self.p:
-            zoom_out = random.uniform(1.0, self.max_zoom_out)
-            img = tv_transforms.RandomAffine(degrees=0, translate=(0, 0), scale=(zoom_out, 1.0), shear=0)(img)
+        if random.random() < 1.0:
+            # Apply random zoom-out transformation to the image
+            zoom_out = random.uniform(1.2, self.max_zoom_out)
+            img = tv_transforms.RandomAffine(degrees=0, translate=(0, 0), scale=(zoom_out, zoom_out), shear=0)(img)
+
+            # Get image dimensions
+            w, h = img.size
+
+            # Compute the amount of padding added to the image
+            # The padding is (total_padding_w, total_padding_h), so divide by 2 for padding on each side
+            pad_w = (w - w * zoom_out) / 2
+            pad_h = (h - h * zoom_out) / 2
+
+            # Update the bounding boxes after zoom-out transformation
+            boxes = tgt["boxes"]  # Boxes are in xyxy format
+
+            # First, scale the bounding box coordinates relative to the zoom-out factor
+            boxes[:, 0] = boxes[:, 0] * zoom_out + pad_w  # x_min
+            boxes[:, 1] = boxes[:, 1] * zoom_out + pad_h  # y_min
+            boxes[:, 2] = boxes[:, 2] * zoom_out + pad_w  # x_max
+            boxes[:, 3] = boxes[:, 3] * zoom_out + pad_h  # y_max
+
+            # Clamp the bounding boxes to make sure they stay within image bounds
+            boxes[:, 0::2] = boxes[:, 0::2].clamp(min=0, max=w)  # Clamp x coordinates
+            boxes[:, 1::2] = boxes[:, 1::2].clamp(min=0, max=h)  # Clamp y coordinates
+
+            # Update the target with new bounding boxes
+            tgt["boxes"] = boxes
         return img, tgt
