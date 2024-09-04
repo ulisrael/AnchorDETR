@@ -453,30 +453,30 @@ def main(args):
                 # print(f'max box scsore for this round is {max_score:04}')
                 # print()
 
-        # if (epoch + 1) % args.eval_model_period == 0:  # per args.eval_checkpoint_period epoch log
-        #     test_stats, coco_evaluator = evaluate(
-        #         model, criterion, postprocessors, data_loader_val, base_ds, device, args.output_dir
-        #     )
-        #
-        #     log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
-        #                  **{f'test_{k}': v for k, v in test_stats.items()},
-        #                  'epoch': epoch,
-        #                  'n_parameters': n_parameters}
-        #
-        #     # print(args.output_dir)
-        #     if args.output_dir and utils.is_main_process():
-        #         with (output_dir / "log.txt").open("a") as f:
-        #             f.write(json.dumps(log_stats) + "\n")
-        #
-        #         if (coco_evaluator is not None):
-        #             (output_dir / 'eval').mkdir(exist_ok=True)
-        #             if "bbox" in coco_evaluator.coco_eval:
-        #                 filenames = ['latest.pth']
-        #                 if epoch % args.eval_checkpoint_period == 0:
-        #                     filenames.append(f'{epoch:06}.pth')
-        #                 for name in filenames:
-        #                     torch.save(coco_evaluator.coco_eval["bbox"].eval,
-        #                                output_dir / "eval" / name)
+        if (epoch + 1) % args.eval_model_period == 0:  # per args.eval_checkpoint_period epoch log
+            test_stats, coco_evaluator = evaluate(
+                model, criterion, postprocessors, data_loader_val, base_ds, device, args.output_dir
+            )
+
+            log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
+                         **{f'test_{k}': v for k, v in test_stats.items()},
+                         'epoch': epoch,
+                         'n_parameters': n_parameters}
+
+            # print(args.output_dir)
+            if args.output_dir and utils.is_main_process():
+                with (output_dir / "log.txt").open("a") as f:
+                    f.write(json.dumps(log_stats) + "\n")
+
+                if (coco_evaluator is not None):
+                    (output_dir / 'eval').mkdir(exist_ok=True)
+                    if "bbox" in coco_evaluator.coco_eval:
+                        filenames = ['latest.pth']
+                        if epoch % args.eval_checkpoint_period == 0:
+                            filenames.append(f'{epoch:06}.pth')
+                        for name in filenames:
+                            torch.save(coco_evaluator.coco_eval["bbox"].eval,
+                                       output_dir / "eval" / name)
         else:  # per epoch log
             log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
                          'epoch': epoch,
