@@ -61,7 +61,7 @@ class CocoDetection(TvCocoDetection):
             # repeat
             img = img.repeat(3,1,1)
 
-        verbose = True
+        verbose = False
         if verbose:
 
             boxes = target['boxes']
@@ -364,7 +364,7 @@ def make_coco_transforms(image_set, args):
                             T.RandomSizeCrop(250, 1100),
                         ])
                     ),
-                    T.RandomZoomOut(p=prob, max_zoom_out=0.4),
+                    T.RandomZoomOut(p=prob, max_zoom_out=0.5),
                     # Resize everything to 1024 for SAM testing, #TODO: remove me later?
                     T.FixedResize([1024, 1024]),
                     T.PercentileThreshold(),
