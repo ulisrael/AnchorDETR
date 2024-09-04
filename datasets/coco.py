@@ -19,11 +19,14 @@ import torch.utils.data
 from pycocotools import mask as coco_mask
 
 from AnchorDETR.datasets.torchvision_datasets import CocoDetection as TvCocoDetection
+from AnchorDETR.util import box_ops
 from AnchorDETR.util.misc import get_local_rank, get_local_size
 import AnchorDETR.datasets.transforms as T
 
 
 import matplotlib.pyplot as plt
+
+
 class CocoDetection(TvCocoDetection):
     def __init__(self, img_folder, ann_file, transforms, return_masks, cache_mode=False, local_rank=0, local_size=1, nuclear=False):
         super(CocoDetection, self).__init__(img_folder, ann_file,
@@ -39,6 +42,7 @@ class CocoDetection(TvCocoDetection):
         img, target = self.prepare(img, target)
         if self._transforms is not None:
             img, target = self._transforms(img, target)
+
         # show each channel individually
         # fig, ax = plt.subplots(1, 3)
         # ax[0].imshow(img[0])
@@ -56,6 +60,45 @@ class CocoDetection(TvCocoDetection):
             img = img.unsqueeze(0)
             # repeat
             img = img.repeat(3,1,1)
+
+        verbose = False
+        if verbose:
+
+            boxes = target['boxes']
+            # img to numpy from PIL
+            import numpy as np
+            # img = np.array(img)
+            # img = img.astype(np.uint8)
+            # plt.imshow(img)
+            plt.imshow(img.permute(1, 2, 0))
+            # size = img.shape[-1]
+            img_with, img_height = img.shape[-1], img.shape[-2]
+
+            # Iterate over the boxes to draw each one
+            for box in boxes:
+                box = box_ops.box_cxcywh_to_xyxy(box)
+                x_min, y_min, x_max, y_max = box
+                x_min *= img_with
+                y_min *= img_height
+                x_max *= img_with
+                y_max *= img_height
+
+                # x_min *= size
+                # y_min *= size
+                # # w *= 1024
+                # # h *= 1024
+                # x_max *= size
+                # y_max *= size
+
+                # Define the corners of the box
+                # x_max = x_min + w
+                # y_max = y_min + h
+
+                # Draw the rectangle
+                plt.plot([x_min, x_max, x_max, x_min, x_min], [y_min, y_min, y_max, y_max, y_min], color='r')
+
+            plt.show()
+
         return img, target
 
 
