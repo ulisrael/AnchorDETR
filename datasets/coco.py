@@ -355,15 +355,15 @@ def make_coco_transforms(image_set, args):
             prob = 0.25
             if image_set == 'train':
                 return T.Compose([
-                    # T.RandomHorizontalFlip(),
+                    T.RandomHorizontalFlip(),
                     # T.RandomRotate(angles),
-                    # T.RandomSelect(
-                    #     T.RandomResize(scales, max_size=1333),
-                    #     T.Compose([
-                    #         T.RandomResize(more_scales),
-                    #         T.RandomSizeCrop(250, 1100),
-                    #     ])
-                    # ),
+                    T.RandomSelect(
+                        T.RandomResize(scales, max_size=1333),
+                        T.Compose([
+                            T.RandomResize(more_scales),
+                            T.RandomSizeCrop(250, 1100),
+                        ])
+                    ),
                     T.RandomZoomOut(p=prob, max_zoom_out=0.2),
                     # Resize everything to 1024 for SAM testing, #TODO: remove me later?
                     T.FixedResize([1024, 1024]),
