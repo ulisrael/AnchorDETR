@@ -507,6 +507,8 @@ class PercentileThreshold(object):
     def __call__(self, img, tgt):
         img = np.array(img)
         non_zero_vals = img[np.nonzero(img)]
+        if len(non_zero_vals) == 0:
+            return img, tgt
         percentiles = np.percentile(non_zero_vals, [self.lower, self.upper])
         img_norm = exposure.rescale_intensity(
             img, in_range=(percentiles[0], percentiles[1]), out_range="uint8"
