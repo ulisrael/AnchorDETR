@@ -70,11 +70,11 @@ class CocoDetection(VisionDataset):
         
         # print(f'np_img.shape: {np_img.shape}')
         # print(f'max: {np.max(np_img, axis=(0,1))}, min: {np.min(np_img, axis=(0,1))}, mean: {np.mean(np_img, axis=(0,1))}, std: {np.std(np_img, axis=(0,1))}')
-        pil_img = Image.fromarray((np_img/(np.max(np_img)+1e-5)*255.0).astype('uint8'), 'RGB') # general return image
+        # pil_img = Image.fromarray((np_img/(np.max(np_img)+1e-5)*255.0).astype('uint8'), 'RGB') # general return image
         
         # np_img = pil_img
         # print(f'max: {np.max(np_img, axis=(0,1))}, min: {np.min(np_img, axis=(0,1))}, mean: {np.mean(np_img, axis=(0,1))}, std: {np.std(np_img, axis=(0,1))}')
-        return pil_img
+        return np_img
         
     
     def __getitem__(self, index):
