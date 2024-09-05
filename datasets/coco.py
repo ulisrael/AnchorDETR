@@ -17,6 +17,7 @@ from pathlib import Path
 import torch
 import torch.utils.data
 from pycocotools import mask as coco_mask
+from skimage.exposure import rescale_intensity
 
 from AnchorDETR.datasets.torchvision_datasets import CocoDetection as TvCocoDetection
 from AnchorDETR.util import box_ops
@@ -25,8 +26,7 @@ import AnchorDETR.datasets.transforms as T
 
 
 import matplotlib.pyplot as plt
-
-
+import torchvision
 class CocoDetection(TvCocoDetection):
     def __init__(self, img_folder, ann_file, transforms, return_masks, cache_mode=False, local_rank=0, local_size=1, nuclear=False):
         super(CocoDetection, self).__init__(img_folder, ann_file,
@@ -39,6 +39,11 @@ class CocoDetection(TvCocoDetection):
         img, target, path = super(CocoDetection, self).__getitem__(idx)
         image_id = self.ids[idx]
         target = {'image_id': image_id, 'annotations': target}
+        # numpy h w c to torch c h w
+        img = img.transpose((2, 0, 1))
+        img = rescale_intensity(img, out_range=(0.0, 1.0))
+        img = torch.from_numpy(img)
+        img = torchvision.transforms.ToPILImage()(img)
         img, target = self.prepare(img, target)
         if self._transforms is not None:
             img, target = self._transforms(img, target)
