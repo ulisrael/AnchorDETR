@@ -483,10 +483,12 @@ class RandomClahe(object):
 
 
 class Standardize(object):
-    def __call__(self, image, target):
+    def __call__(self, image, target=None):
         image = image.unsqueeze(0)
         image = normalize_min_max(image)
         image = image.squeeze(0)
+        if target is None:
+            return image
         return image, target
 
 
@@ -504,7 +506,7 @@ class PercentileThreshold(object):
         self.lower = lower
         self.upper = upper
 
-    def __call__(self, img, tgt):
+    def __call__(self, img, tgt=None):
         img = np.array(img)
         non_zero_vals = img[np.nonzero(img)]
         if len(non_zero_vals) == 0:
@@ -517,6 +519,8 @@ class PercentileThreshold(object):
         # back to PIL
         img = Image.fromarray(img)
 
+        if tgt is None:
+            return img
         return img, tgt
 
 import torchvision.transforms.v2 as tv_transforms
@@ -571,12 +575,14 @@ class RandomEqualize(object):
         return img, tgt
 
 class ToRGB(object):
-    def __call__(self, img, tgt):
+    def __call__(self, img, tgt=None):
         if max(img[1,...].flatten()) == 0:
             img[1,...] = img[2,...]
         if max(img[2,...].flatten()) == 0:
             img[2,...] = img[1,...]
         img[0,...] = img[2,...]
+        if tgt is None:
+            return img
         return img, tgt
 
 
