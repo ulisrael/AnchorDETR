@@ -19,7 +19,7 @@ from torch import nn
 from torchvision.models._utils import IntermediateLayerGetter
 from typing import Dict, List
 
-from segment_anything.segment_anything import sam_model_registry
+from segment_anything import sam_model_registry
 from AnchorDETR.util.misc import NestedTensor, is_main_process
 
 
