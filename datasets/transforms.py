@@ -507,6 +507,9 @@ class PercentileThreshold(object):
         self.upper = upper
 
     def __call__(self, img, tgt=None):
+        # is PIL?
+        is_pil = isinstance(img, Image.Image)
+
         img = np.array(img)
         non_zero_vals = img[np.nonzero(img)]
         if len(non_zero_vals) == 0:
@@ -515,9 +518,10 @@ class PercentileThreshold(object):
         img_norm = exposure.rescale_intensity(
             img, in_range=(percentiles[0], percentiles[1]), out_range="uint8"
         )
-        img = img_norm.astype(np.uint8)
-        # back to PIL
-        img = Image.fromarray(img)
+        if is_pil:
+            img = img_norm.astype(np.uint8)
+            # back to PIL
+            img = Image.fromarray(img)
 
         if tgt is None:
             return img
