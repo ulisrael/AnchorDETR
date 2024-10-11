@@ -515,11 +515,11 @@ class PercentileThreshold(object):
         if len(non_zero_vals) == 0:
             return img, tgt
         percentiles = np.percentile(non_zero_vals, [self.lower, self.upper])
-        img_norm = exposure.rescale_intensity(
-            img, in_range=(percentiles[0], percentiles[1]), out_range="uint8"
+        img = exposure.rescale_intensity(
+            img, in_range=(percentiles[0], percentiles[1]), out_range="float32"
         )
         if is_pil:
-            img = img_norm.astype(np.uint8)
+            img = img.astype(np.uint8)
             # back to PIL
             img = Image.fromarray(img)
 
@@ -580,10 +580,11 @@ class RandomEqualize(object):
 
 class ToRGB(object):
     def __call__(self, img, tgt=None):
-        if max(img[1,...].flatten()) == 0:
-            img[1,...] = img[2,...]
-        if max(img[2,...].flatten()) == 0:
-            img[2,...] = img[1,...]
+        # if max(img[1,...].flatten()) == 0:
+        #     img[1,...] = img[2,...]
+        # if max(img[2,...].flatten()) == 0:
+        #     img[2,...] = img[1,...]
+        img[1,...] = img[2,...]
         img[0,...] = img[2,...]
         if tgt is None:
             return img
