@@ -482,6 +482,17 @@ class RandomClahe(object):
         return img, target
 
 
+class Clahe(object):
+    def __init__(self, clip_limit=4.0, tile_grid_size=(256, 256)):
+        self.clip_limit = clip_limit
+        self.tile_grid_size = tile_grid_size
+
+    def __call__(self, img):
+        img = equalize_clahe(img.unsqueeze(0), clip_limit=2.0,
+                             grid_size=self.tile_grid_size)
+        return img
+
+
 class Standardize(object):
     def __call__(self, image, target=None):
         image = image.unsqueeze(0)
@@ -497,10 +508,13 @@ class mediar(object):
         image = image.median_filter(3)
         return image, target
 
+
 import kornia
 from skimage import exposure
 import numpy as np
 from PIL import Image
+
+
 class PercentileThreshold(object):
     def __init__(self, lower=0.0, upper=99.5):
         self.lower = lower
@@ -527,7 +541,37 @@ class PercentileThreshold(object):
             return img
         return img, tgt
 
+
+class PercentileThreshold_a(object):
+    def __init__(self, lower=0.0, upper=99.5):
+        self.lower = lower
+        self.upper = upper
+
+    def __call__(self, img, tgt=None):
+        # is PIL?
+        is_pil = isinstance(img, Image.Image)
+
+        img = np.array(img)
+        non_zero_vals = img[np.nonzero(img)]
+        if len(non_zero_vals) == 0:
+            return img, tgt
+        percentiles = np.percentile(non_zero_vals, [self.lower, self.upper])
+        img = exposure.rescale_intensity(
+            img, in_range=(percentiles[0], percentiles[1]), out_range="uint8"
+        )
+        # if is_pil:
+        #     img = img.astype(np.uint8)
+        #     back to PIL
+        # img = Image.fromarray(img)
+
+        if tgt is None:
+            return img
+        return img, tgt
+
+
 import torchvision.transforms.v2 as tv_transforms
+
+
 class GaussianNoise(object):
     def __init__(self, mean=0.0, std=0.1, p=0.5):
         self.mean = mean
@@ -539,7 +583,10 @@ class GaussianNoise(object):
             img = tv_transforms.GaussianNoise(mean=self.mean, sigma=self.std)(img)
         return img, tgt
 
+
 from kornia.enhance import adjust_gamma
+
+
 class RandomGamma(object):
     def __init__(self, gamma=(0.5, 1.5), p=0.5):
         self.gamma = gamma
@@ -549,6 +596,7 @@ class RandomGamma(object):
         if random.random() < self.p:
             img = adjust_gamma(img, gamma=random.uniform(*self.gamma))
         return img, tgt
+
 
 class RandomGauss(object):
     def __init__(self, mean=0.0, std=0.1, p=0.5):
@@ -560,6 +608,7 @@ class RandomGauss(object):
         if random.random() < self.p:
             img = tv_transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 1.0))(img)
         return img, tgt
+
 
 class RandomSharpening(object):
     def __init__(self, alpha=(0.5, 1.0), p=0.5):
@@ -578,14 +627,15 @@ class RandomEqualize(object):
             img = tv_transforms.RandomEqualize(p=1.0)(img)
         return img, tgt
 
+
 class ToRGB(object):
     def __call__(self, img, tgt=None):
-        # if max(img[1,...].flatten()) == 0:
-        #     img[1,...] = img[2,...]
-        # if max(img[2,...].flatten()) == 0:
-        #     img[2,...] = img[1,...]
-        img[1,...] = img[2,...]
-        img[0,...] = img[2,...]
+        if max(img[1, ...].flatten()) == 0:
+            img[1, ...] = img[2, ...]
+        if max(img[2, ...].flatten()) == 0:
+            img[2, ...] = img[1, ...]
+        # img[1,...] = img[2,...]
+        # img[0,...] = img[2,...]
         if tgt is None:
             return img
         return img, tgt
@@ -597,6 +647,7 @@ class SwapChannels(object):
         img = img.permute(1, 2, 0)
         return img, tgt
 
+
 class RandomHistogram(object):
     def __init__(self, num_control_points=3, p=0.5):
         self.num_control_points = num_control_points
@@ -607,6 +658,7 @@ class RandomHistogram(object):
         if random.random() < self.p:
             img = self.aug(img)
         return img, tgt
+
 
 class RandomZoomOut(object):
     def __init__(self, max_zoom_out=0.5, p=0.5):
