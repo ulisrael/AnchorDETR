@@ -20,6 +20,7 @@ import torchvision.transforms as T
 import torchvision.transforms.functional as F
 from PIL import ImageDraw
 from monai.transforms import RandHistogramShift
+from skimage.exposure import equalize_adapthist, rescale_intensity
 
 from AnchorDETR.util.box_ops import box_xyxy_to_cxcywh, box_cxcywh_to_xyxy
 from AnchorDETR.util.misc import interpolate
@@ -487,8 +488,13 @@ class Clahe(object):
         self.clip_limit = clip_limit
         self.tile_grid_size = tile_grid_size
 
-    def __call__(self, img):
-        img = equalize_clahe(img.unsqueeze(0), clip_limit=2.0,
+    def __call__(self, img, backend="kornia"):
+        if backend == "kornia":
+            img = equalize_clahe(img.unsqueeze(0), clip_limit=self.clip_limit, grid_size=self.tile_grid_size)
+        else:
+            img = rescale_intensity(img.cpu().numpy(), out_range=(0.0, 1.0))
+            img = equalize_adapthist(img, kernel_size=128)
+        img = equalize_clahe(img.unsqueeze(0), clip_limit=1.0,
                              grid_size=self.tile_grid_size)
         return img
 
