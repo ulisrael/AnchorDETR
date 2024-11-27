@@ -636,12 +636,10 @@ class RandomEqualize(object):
 
 class ToRGB(object):
     def __call__(self, img, tgt=None):
-        if max(img[1, ...].flatten()) == 0:
+        if torch.max(img[1, ...]) == 0:
             img[1, ...] = img[2, ...]
-        if max(img[2, ...].flatten()) == 0:
+        if torch.max(img[2, ...]) == 0:
             img[2, ...] = img[1, ...]
-        # img[1,...] = img[2,...]
-        # img[0,...] = img[2,...]
         if tgt is None:
             return img
         return img, tgt
