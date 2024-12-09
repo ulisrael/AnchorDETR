@@ -392,7 +392,7 @@ def make_coco_transforms(image_set, args):
             # T.RandomResize([800], max_size=1333),
             #Resize everything to 1024 for SAM testing
             T.FixedResize([1024,1024]),
-            T.PercentileThreshold(),
+            # T.PercentileThreshold(),
             # T.RandomRotate(angles),
             normalize,
             T.Standardize(),
