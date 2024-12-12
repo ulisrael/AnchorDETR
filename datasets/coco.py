@@ -27,6 +27,10 @@ import AnchorDETR.datasets.transforms as T
 
 import matplotlib.pyplot as plt
 import torchvision
+
+from misc.collate import normalize_pil_image
+
+
 class CocoDetection(TvCocoDetection):
     def __init__(self, img_folder, ann_file, transforms, return_masks, cache_mode=False, local_rank=0, local_size=1, nuclear=False):
         super(CocoDetection, self).__init__(img_folder, ann_file,
@@ -372,9 +376,10 @@ def make_coco_transforms(image_set, args):
                     T.RandomZoomOut(p=prob, max_zoom_out=0.5),
                     # Resize everything to 1024 for SAM testing, #TODO: remove me later?
                     T.FixedResize([1024, 1024]),
-                    T.PercentileThreshold(),
+                    # T.PercentileThreshold(),
                     normalize,
                     T.Standardize(),
+                    # normalize_pil_image,
                     T.ToRGB(),
                     T.GaussianNoise(p=prob),
                     T.RandomGamma(p=prob),
