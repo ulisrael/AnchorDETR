@@ -182,11 +182,11 @@ class SAMBackbone(SAMBackboneBase):
                  only_neck: bool = False,
                  freeze_backbone: bool = False,
                  sam_vit: str = "vit_h"):
-        path = "AnchorDETR/pretrained_models/sam_vit_h_4b8939.pth"
+        path = "pretrained_models/sam_vit_h_4b8939.pth"
         if sam_vit == "vit_b":
-            path = "AnchorDETR/pretrained_models/sam_vit_b_01ec64.pth"
+            path = "pretrained_models/sam_vit_b_01ec64.pth"
         if sam_vit == "vit_l":
-            path = "AnchorDETR/pretrained_models/sam_vit_l_0b3195.pth"
+            path = "pretrained_models/sam_vit_l_0b3195.pth"
         backbone = sam_model_registry[sam_vit](
             checkpoint=path
         )
