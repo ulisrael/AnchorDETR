@@ -28,7 +28,7 @@ import AnchorDETR.datasets.transforms as T
 import matplotlib.pyplot as plt
 import torchvision
 
-from misc.collate import normalize_pil_image
+# from misc.collate import normalize_pil_image
 
 
 class CocoDetection(TvCocoDetection):
